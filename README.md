@@ -24,7 +24,7 @@
    传统的网格策略即是在震荡行情中、不断的执行低买高卖的行为过程。一图以蔽之
    ```
 
-   ![image-20210618221132318](/Users/yangyouyu_1/Library/Application Support/typora-user-images/image-20210618221132318.png)
+   ![image-20210618221132318](https://gitee.com/yyy5325/smartpool/raw/master/imgs/%E7%BD%91%E6%A0%BC%E5%A5%97%E5%88%A9%E5%9B%BE.png)
 
    ### 1.2、收益分析
 
@@ -36,19 +36,19 @@
 
    #### 例1
 
-   ![image-20210618223451788](/Users/yangyouyu_1/Library/Application Support/typora-user-images/image-20210618224717946.png)
+   ![image-20210618223451788](https://gitee.com/yyy5325/smartpool/raw/master/imgs/sin2x-sinx.png)
 
    很明显、左图的震荡状态更佳一些、因为两条函数的振幅虽然相同、但是左图的周期更短、波动更强、所以更适合做网格！
 
    #### 例2
 
-   ![image-20210618223836798](/Users/yangyouyu_1/Library/Application Support/typora-user-images/image-20210618224854618.png)
+   ![image-20210618223836798](https://gitee.com/yyy5325/smartpool/raw/master/imgs/sin2x-2sinx.png)
 
    你开始有些犹豫了、左图虽然周期更小、但是振幅也较小、右图虽然周期大、但是振幅也大、那么如何选择呢？
 
    下面我们将两条曲线在一个坐标上显示
 
-   ![image-20210618225055141](/Users/yangyouyu_1/Library/Application Support/typora-user-images/image-20210618225055141.png)
+   ![image-20210618225055141](https://gitee.com/yyy5325/smartpool/raw/master/imgs/%E5%90%88.png)
 
    我们发现、这两条曲线有公共周期 **[0,6.28]** ! 且在该周期内、他们对y轴扫过的距离是相同的**(1)**、那么我们可以认为他们的震荡状态是相同的、使用网格机器人对两支投资标套利将是相等的理论收益。
 
@@ -73,13 +73,13 @@
 
    看下图的转换过程:
 
-   ![image-20210620230924400](/Users/yangyouyu_1/Library/Application Support/typora-user-images/image-20210620230924400.png)
+   ![image-20210620230924400](https://gitee.com/yyy5325/smartpool/raw/master/imgs/%E4%B8%80%E6%AC%A1%E8%A1%8C%E6%83%85%E5%AF%B9y%E6%98%A0%E5%B0%84.png)
 
    左边是正常的k线数据、四根小时级别k线依次代表：8点到9点、价格从2涨至6刀；9点到10点、价格从6到跌倒4刀；10点到11点、价格从4涨到8；11点到现在、价格从8跌到了0。
 
    然后将四根蜡烛向价格轴映射、就形成了简单的一次映射堆叠图谱。到了这里我们似乎还不能得到任何有效信息、那么我们先将右边图标简单的颠倒一下、看看像什么。
 
-   ![image-20210620233254090](/Users/yangyouyu_1/Library/Application Support/typora-user-images/image-20210620233254090.png)
+   ![image-20210620233254090](https://gitee.com/yyy5325/smartpool/raw/master/imgs/%E4%BA%8C%E6%AC%A1%E6%AD%A3%E6%80%81%E6%9B%B2%E7%BA%BF%E5%BD%A2%E6%88%90.png)
 
    像是即将消去的俄罗斯方块、只不过x轴变成了价格轴、而右边呢、好像是一条均线、但我更建议你用正态分布的眼光去分析它。
 
