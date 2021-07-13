@@ -24,8 +24,6 @@ public class SmartPoolApplication {
     public static void main(String[] args) {
         SpringApplication.run(SmartPoolApplication.class, args);
         System.out.println("\n\n\n--SMARTPOOL SUCCESS--\n\n\n");
-//        double x = 0.1231313;
-//        System.out.println(BigDecimal.valueOf(x).setScale(2, RoundingMode.DOWN).doubleValue());
     }
 
     @Bean

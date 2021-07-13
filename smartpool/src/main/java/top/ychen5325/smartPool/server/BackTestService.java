@@ -17,6 +17,9 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
+ * 网格策略快速模拟跑盘
+ * 数据仅供参考。
+ *
  * @author yyy
  * @wx ychen5325
  * @email yangyouyuhd@163.com
@@ -74,7 +77,7 @@ public class BackTestService {
     public BigDecimal startRobot(String symbol, BigDecimal highP, BigDecimal lowP, BigDecimal incRate, Long startTime, Long endTime) {
         // 1、先获取kline
         if (!initKlines(symbol, startTime, endTime)) {
-            log.error("{}k线失败",symbol);
+            log.error("{}k线失败", symbol);
             return null;
         }
         // 2、初始化机器人
@@ -214,12 +217,11 @@ public class BackTestService {
                 Double b1 = Double.valueOf(b.split("\t")[1]);
                 return b1.compareTo(a1);
             }).limit(20).collect(Collectors.toList());
-        }catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
     }
-
 
     public static void main(String[] args) {
         CallResult<List<Map>> result = new RestTemplate().getForObject("http://www.ychen5325.top/api/v1/smart/list/shock/d1/101", CallResult.class);

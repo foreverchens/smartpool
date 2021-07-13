@@ -64,7 +64,6 @@ public class SmartPoolService {
         if (limit != null) {
             reqUrl = reqUrl.concat("&limit=" + limit);
         }
-        // log.info("list kline url is {}", reqUrl);
 
         String resp = restTemplate.getForObject(reqUrl, String.class);
         List<List> klines = JSON.parseArray(resp, List.class);
@@ -110,12 +109,9 @@ public class SmartPoolService {
                 time -= 43200000;
             } while (time > 0);
 
-            // 最高价、最低价、中间价
+            // 最高价、最低价、均价
             double maxPrice = klines.stream().max(Comparator.comparing(KlineForBa::getMaxPrice)).get().getMaxPrice().doubleValue();
             double minPrice = klines.stream().min(Comparator.comparing(KlineForBa::getMinPrice)).get().getMinPrice().doubleValue();
-
-
-            // 均价
             double avgPrice = klines.stream().map(e -> e.getOpenPrice().add(e.getClosePrice()).doubleValue()).collect(Collectors.averagingDouble(e -> e)) / 2;
 
             /**
@@ -125,8 +121,6 @@ public class SmartPoolService {
              * 负向累减到 minPrice
              */
             double scalePrice = avgPrice / 1000;
-
-            // 获取Y轴价格轴的刻度价格、一般币种的震荡幅度不会超过上下20%、暂取均价上下10%作为其震荡区间、并细分100份、此处可大数据优化、
 
             /**
              * 数组长度定义、
@@ -152,44 +146,16 @@ public class SmartPoolService {
                 }
             }
 
-
-
-/*            // 最小价格尺度、
-            double scalePrice = (maxPrice - minPrice) / 10000;
-
-            *//**
-             * 最小价格尺度固定为0.1、其他价格等比缩放到100、缩放比例为均价缩放比率
-             *//*
-            scalePrice = 0.1;
-            // 均价
-            double avgPrice = klines.stream().map(e -> e.getOpenPrice().add(e.getClosePrice()).doubleValue()).collect(Collectors.averagingDouble(e -> e)) / 2;
-            double avgRate = 100 / avgPrice;
-
-
-//          获取Y轴价格轴的刻度价格、一般币种的震荡幅度不会超过上下20%、暂取均价上下10%作为其震荡区间、并细分100份、此处可大数据优化、
-
-            int len = (int) ((maxPrice - minPrice) * avgRate / scalePrice);
-            int[] priceCountArr = new int[len];
-            for (KlineForBa kline : klines) {
-                double openPrice = kline.getOpenPrice().doubleValue();
-                double closePrice = kline.getClosePrice().doubleValue();
-                double lowPrice = Math.min(openPrice, closePrice) * avgRate;
-                double highPrice = Math.max(openPrice, closePrice) * avgRate;
-                for (int i = 0; i < priceCountArr.length; i++) {
-                    double curPrice = minPrice * avgRate + (i * scalePrice);
-                    if (lowPrice <= curPrice && highPrice >= curPrice) {
-                        priceCountArr[i]++;
-                    }
-                }
-            }*/
-            int ShockVal = Arrays.stream(priceCountArr).sum();
-//            log.info(" {} 震频值: {}", symbol, ShockVal);
+            //  价格区间内 震荡点数总和
+            int totalShakePoint = Arrays.stream(priceCountArr).sum();
             /**
              * 稀疏极限
              *     最后得到的正态分布曲线、我们将两端的点位和不超过总数10%的区间去除、剩下的即为震荡区间
              */
             float sparseLimit = 0.1F;
-            int sparseCount = (int) (ShockVal * sparseLimit);
+            // 至少在两端应该去除的点数和
+            int sparseCount = (int) (totalShakePoint * sparseLimit);
+            // 双指针记录去除双端点数后的位置、双指针之间即为密集点位区间
             int left = 0, right = priceCountArr.length - 1;
             int tmpCount = 0;
             while (left < right) {
@@ -202,15 +168,8 @@ public class SmartPoolService {
                     break;
                 }
             }
-            /**
-             * 套利次数分析
-             */
-
-//        log.info("包含90%点位区间:[{},{}],总点位数:{},对应价格区间为:[{},{}]", left, right, pointCount-tmpCount,minPrice + interval * left, minPrice + interval * right);
-//        log.info(" {} 过去24h包含90%点位的震荡区间为:[{},{}]", symbol, minPrice + interval * left, minPrice + interval * right);
-//            return String.format("%s当前所处震荡区间:[%s,%s]", symbol, minPrice + interval * left, minPrice + interval * right);
-            Double[] res = {1D * ShockVal, (minPrice + scalePrice * left), (minPrice + scalePrice * right), 0.0};
-//            Double[] res = {1D * ShockVal, (minPrice * avgRate + scalePrice * left) / avgRate, (minPrice * avgRate + scalePrice * right) / avgRate, 0.0};
+            // res结果
+            Double[] res = {1D * totalShakePoint, (minPrice + scalePrice * left), (minPrice + scalePrice * right), 0.0};
             /**
              *  一下三类情况不适合做网格
              *  1、单边上涨行情
@@ -252,23 +211,12 @@ public class SmartPoolService {
             /**
              * 均值方差、反映整体的震荡情况
              */
-            Double avgVariance = avgList.stream().map(avgP ->
+            Double meanVariance = avgList.stream().map(avgP ->
                     BigDecimal.valueOf(Math.pow(((avgP - overallAvgPrice) / overallAvgPrice * 100), 2))
                             .setScale(2, RoundingMode.DOWN).doubleValue()
             ).collect(Collectors.summingDouble(e -> e));
             // 方差值
-            res[3] = avgVariance;
-            /**
-             * 单边行情：两边差值均较大、且符号相反、中间值接近均值、
-             */
-            /*Double leftAvg = avgList.get(0);
-            Double rightAvg = avgList.get(avgList.size() - 1);
-            if (Math.abs(rightAvg - leftAvg) > (maxP - minP) * 0.9) {
-                // 左右区间平均值差值 大于 1/2倍震荡区间 则认为处于单边上涨或下跌行情
-                log.error("{}处于单边行情", symbol);
-                map.get("uni").add(symbol.concat("--"+leftAvg).concat("--"+rightAvg));
-                return null;
-            }*/
+            res[3] = meanVariance;
             return res;
         } catch (Exception e) {
             log.info(e.getMessage());
@@ -285,15 +233,17 @@ public class SmartPoolService {
         for (String symbol : symbols) {
             log.info("币种:{} start....", symbol);
             /**
-             * res[0] 震频值
+             * 获取震荡区间和震频量化值
+             * res[0] 震频值 根据算法得到的震荡指标、可直接参考。
              * res[1] 震荡区间下限价格
              * res[2] 震荡区间上限价格
+             * res[3] 均值方差、方差整体平稳情况、数值越小、相对越平稳
              */
             Double[] res = this.shockAnalyze(symbol, period);
             if (Objects.isNull(res)) {
                 continue;
             }
-            // 结果为 ${incRate}%
+            // 结果为 ${incRate}%  震荡区间上下跨幅
             BigDecimal incRate = BigDecimal.valueOf((res[2] - res[1]) * 100 / res[1]).setScale(3, RoundingMode.DOWN);
             double meanVariance = res[3];
             shockModels.add(SymbolShock.builder()
@@ -307,58 +257,27 @@ public class SmartPoolService {
         }
 
         /**
-         *  shockVal 和 incRate 基本成反比、需要加权求和、
-         *  shock 对其中位数求百分比、过滤出正值、
-         *  incRate 对其中位数求百分比、过滤出正值
+         *  主要关注 shockVal 和 meanVariance指标
+         *  一般来说、前者具备更高优先级、数值越大、越震荡、但走势是多样的、
+         *  后者作为辅助参考、shockVal在同一范围内、meanVariance越小、代表震荡点位越密集、单边走势势能越低
+         *  即具备更高的套利价值【shockVal越大&&meanVariance越小】
          */
-        // 获取shockVal 和 incRate中位数
-        shockModels.sort((a, b) -> (int) (a.getShockVal() - b.getShockVal()));
-        double shockValMedian = shockModels.size() % 2 == 0
-                ? (shockModels.get(shockModels.size() / 2).getShockVal() + shockModels.get((shockModels.size() - 1) / 2).getShockVal()) / 2
-                : shockModels.get(shockModels.size() / 2).getShockVal();
-
-        shockModels.sort(Comparator.comparing(SymbolShock::getIncRate));
-        BigDecimal incRateMedian = shockModels.size() % 2 == 0
-                ? (shockModels.get(shockModels.size() / 2).getIncRate().add(shockModels.get((shockModels.size() - 1) / 2).getIncRate())).divide(BigDecimal.valueOf(2), 6, RoundingMode.DOWN)
-                : shockModels.get(shockModels.size() / 2).getIncRate();
-
         List<SymbolShock> result = shockModels.stream()
-                // .filter(e -> e.getShockVal() >= shockValMedian /*&& e.getIncRate().compareTo(incRateMedian) > -1*/)
-
                 // 均值方差小于125 * (假设振幅上限为10%、局部区间取的5%、则最优方差为 2.5^2 * 20=125)
                 .filter(e -> e.getMeanVariance() < 125 * period.time / 1440 / 1000 / 60)
                 .sorted((e1, e2) -> {
-                    double e1ShockRate = e1.getShockVal() / shockValMedian - 1;
-                    double e2ShockRate = e2.getShockVal() / shockValMedian - 1;
-                    double e1IncRate = e1.getIncRate().divide(incRateMedian, 6, RoundingMode.DOWN).subtract(BigDecimal.ONE).doubleValue();
-                    double e2IncRate = e2.getIncRate().divide(incRateMedian, 6, RoundingMode.DOWN).subtract(BigDecimal.ONE).doubleValue();
-                    e1.setRecomRatio(e1IncRate + e1ShockRate);
-                    e2.setRecomRatio(e2IncRate + e2ShockRate);
-                    // return (e2ShockRate + e2IncRate) > (e1ShockRate + e1IncRate) ? 1 : -1;
-                    return e2ShockRate > e1ShockRate ? 1 : -1;
+                    Double v1 = e1.getShockVal() / 50;
+                    Double v2 = e2.getShockVal() / 50;
+                    int res = v2.intValue() - v1.intValue();
+                    if (res == 0) {
+                        Double m1 = e1.getMeanVariance();
+                        Double m2 = e1.getMeanVariance();
+                        return m1.intValue() - m2.intValue();
+                    }
+                    return res;
                 })
-//                .limit(20)
                 .collect(Collectors.toList());
         return result;
     }
-
-
-    public static void main(String[] args) {
-        List<Map<String, Double>> list = new ArrayList<>();
-        for (int i = 0; i < 121; i++) {
-            Map<String, Double> map = new HashMap<>();
-            map.put("age", (double) i);
-            list.add(map);
-        }
-        int size = list.size();
-        // 单边行情分析
-        Double leftAvg = list.subList(0, size / 10).stream().collect(Collectors.averagingDouble(a -> a.get("age")));
-        Double rightAvg = list.subList((int) (size * 0.9), size).stream().collect(Collectors.averagingDouble(a -> a.get("age")));
-        double midAvg = list.subList((int) (size * 0.4), (int) (size * 0.6)).stream().collect(Collectors.averagingDouble(a -> a.get("age")));
-        log.info("{}-{}-{}", leftAvg, rightAvg, midAvg);
-        log.info("{}\n{}\n{}", list.subList(0, size / 10), list.subList((int) (size * 0.9), size), list.subList((int) (size * 0.4), (int) (size * 0.6)));
-
-    }
-
 
 }
