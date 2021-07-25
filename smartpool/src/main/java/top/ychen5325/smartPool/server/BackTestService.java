@@ -17,10 +17,13 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
+ * 网格策略快速模拟跑盘
+ * 数据仅供参考。
+ *
  * @author yyy
  * @wx ychen5325
  * @email yangyouyuhd@163.com
- * @apiNote Historical backtesting of machine gun pool recommendations
+ * @apiNote 对机枪池的推荐进行历史回测
  */
 @Slf4j
 @Component
@@ -30,7 +33,7 @@ public class BackTestService {
     public RestTemplate restTemplate;
 
     /**
-     * Price per unit and disposal funds
+     * 每格价格和支配资金
      */
     BigDecimal gridPrice;
     BigDecimal gridBalance;
@@ -43,7 +46,7 @@ public class BackTestService {
     List<Double> prices = new ArrayList<>();
     int index = 0;
     /**
-     * LoverId&buyQty of all unsold buy orders
+     * 所有未卖出买单的loverId&buyQty
      */
     Stack<String> qtyStack = new Stack<>();
 
@@ -61,21 +64,27 @@ public class BackTestService {
     }
 
     /**
-     * Conduct historical market backtests on the currency within a specified period, and finally
-     * return to its theoretical monthly rate of backtesting
+     * 对币种在指定周期内进行历史行情回测、最后返回其回测理论月化率
      *
-     * @return Theoretical monthly rate
+     * @param symbol
+     * @param highP     震荡上限价格
+     * @param lowP      震荡下限价格
+     * @param incRate   振幅
+     * @param startTime 回测开始时间
+     * @param endTime   回测结束时间
+     * @return 其周期内理论月化率
      */
     public BigDecimal startRobot(String symbol, BigDecimal highP, BigDecimal lowP, BigDecimal incRate, Long startTime, Long endTime) {
-        // 1、Get kline first
+        // 1、先获取kline
         if (!initKlines(symbol, startTime, endTime)) {
+            log.error("{}k线失败", symbol);
             return null;
         }
-        // 2、Initialize the robot
+        // 2、初始化机器人
         initRobot(highP, lowP, incRate);
-        // 3、Simulation running
+        // 3、模拟跑盘
         patrol();
-        // 4、Return monthly
+        // 4、返回月化
         return monthRate;
     }
 
@@ -97,7 +106,7 @@ public class BackTestService {
         nextSellPrice = curP.add(gridPrice);
 
         int unFilledCount = (highP.subtract(curP).divide(gridPrice, 8, BigDecimal.ROUND_DOWN)).intValue();
-        // Available funds, place an order, obtain the actual purchase quantity, actual spent funds and handling fees
+        // 可使用的资金、下单、获取实际购买数量、实际花费的资金和手续费
         double useFunds = gridBalance.doubleValue() * unFilledCount;
         double planQty = useFunds / curP.doubleValue();
 
@@ -109,7 +118,7 @@ public class BackTestService {
     }
 
     /**
-     * Obtain the bar list for the backtest period,
+     * 获取回测周期内对k线列表、
      */
     private boolean initKlines(String symbol, Long startTime, Long endTime) {
         int count = 0;
@@ -122,14 +131,14 @@ public class BackTestService {
                 prices = (List<Double>) result.getData();
                 return true;
             } catch (Exception e) {
-                log.info("{}k line acquisition failed:{}", symbol, e.getMessage());
+                log.info("{}k线获取失败:{}", symbol, e.getMessage());
             }
         } while (count++ < 3);
         return false;
     }
 
     /**
-     * Simulation running
+     * 模拟跑盘
      */
     private void patrol() {
         while (true) {
@@ -139,7 +148,7 @@ public class BackTestService {
             BigDecimal realPrice = BigDecimal.valueOf(prices.get(index++));
             if (realPrice.compareTo(nextPayPrice) < 1) {
                 if (usdtBalance.compareTo(gridBalance) > -1) {
-                    // Execute buy
+                    // 执行买入
                     usdtBalance = usdtBalance.subtract(gridBalance);
 
                     nextPayPrice = realPrice.subtract(gridPrice);
@@ -149,7 +158,7 @@ public class BackTestService {
                 }
             } else if (realPrice.compareTo(nextSellPrice) > -1) {
                 if (!qtyStack.isEmpty()) {
-                    // Get the top node of the stack
+                    // 获取栈顶节点
                     String curNode = qtyStack.pop();
                     String[] split = curNode.split("&");
                     String exeQty = split[1];
@@ -168,16 +177,18 @@ public class BackTestService {
     }
 
     /**
-     * Entry function
-     * Backtest the currency shock data calculated by the machine gun pool within a specified period, and return to its theoretical monthly,
+     * 入口函数
+     * 对机枪池计算币种震荡数据进行指定周期内回测、并返回其理论月化、
      *
      * @return ["symbol \t monthRate"]
      */
     public List<String> backTestHandler(IntervalEnum intervalEnum, List<SymbolShock> symbolShocks) {
         try {
+            log.info("【回测池】周期:{},开始。。。。", intervalEnum.toString());
             List<String> backTestPool = new ArrayList<>();
             Long time = intervalEnum.time;
             for (SymbolShock symbolShock : symbolShocks) {
+                log.info("【回测池】币种:{}。。。", symbolShock.getSymbol());
                 try {
                     BigDecimal monthRate = this.startRobot(
                             symbolShock.getSymbol(),
@@ -200,7 +211,7 @@ public class BackTestService {
                     e.printStackTrace();
                 }
             }
-            // Descending order, interception 20
+            // 降序、截取20
             return backTestPool.stream().sorted((a, b) -> {
                 Double a1 = Double.valueOf(a.split("\t")[1]);
                 Double b1 = Double.valueOf(b.split("\t")[1]);
@@ -210,5 +221,29 @@ public class BackTestService {
             e.printStackTrace();
             return null;
         }
+    }
+
+    public static void main(String[] args) {
+        CallResult<List<Map>> result = new RestTemplate().getForObject("http://www.ychen5325.top/api/v1/smart/list/shock/d1/101", CallResult.class);
+        List<SymbolShock> shockModels = result.getData().stream().map(e -> JSON.parseObject(JSON.toJSONString(e), SymbolShock.class)).collect(Collectors.toList());
+        List<String> res = new ArrayList<>();
+        shockModels.forEach(e -> {
+            BackTestService service = new BackTestService();
+            service.restTemplate = new RestTemplate();
+            res.add(e.getSymbol().concat("\t" +
+                    service.startRobot(e.getSymbol(),
+                            e.getMaxPrice(),
+                            e.getMinPrice(),
+                            e.getIncRate(),
+                            1618566404000L, 1618652804000L).multiply(BigDecimal.valueOf(30))
+                            .setScale(2, RoundingMode.DOWN).toPlainString()));
+        });
+        res.sort((a, b) -> {
+            Double a1 = Double.valueOf(a.split("\t")[1]);
+            Double b1 = Double.valueOf(b.split("\t")[1]);
+            return a1 > b1 ? -1 : 1;
+        });
+        res.forEach(e -> System.out.println(e));
+
     }
 }

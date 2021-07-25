@@ -6,7 +6,11 @@ package top.ychen5325.smartPool.model;
  * @email yangyouyuhd@163.com
  */
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import java.math.BigDecimal;
 
@@ -26,18 +30,30 @@ public class SymbolShock {
 
     String symbol;
     /**
-     * Frequency values and key quantitative indicators calculated according to the algorithm
+     * 根据算法计算得到的震频值
      */
     double ShockVal;
 
-
+    /**
+     * 震荡区间的振幅绝对值
+     */
     BigDecimal incRate;
 
-
+    /**
+     * 震荡区间
+     */
     BigDecimal maxPrice;
     BigDecimal minPrice;
 
 
+    /**
+     * 最后得到的推荐指数 尚未成熟
+     */
+    double recomRatio;
+
+    /**
+     * 局部均值方差
+     */
     double meanVariance;
 }
 

@@ -24,7 +24,7 @@ public enum IntervalEnum {
     public static List<IntervalEnum> jqPoolPeriodList;
 
     static {
-        jqPoolPeriodList = Arrays.asList(d1);
+        jqPoolPeriodList = Arrays.asList(d3);
     }
 
     IntervalEnum(String interval, int time) {
