@@ -1,20 +1,21 @@
 package top.ychen5325.smartPool.server;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
-import lombok.Getter;
+import cn.hutool.core.collection.CollectionUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
 import top.ychen5325.smartPool.common.IntervalEnum;
-import top.ychen5325.smartPool.common.UrlConfig;
 import top.ychen5325.smartPool.model.KlineForBa;
 import top.ychen5325.smartPool.model.SymbolShock;
 
 import javax.annotation.Resource;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.*;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -26,73 +27,10 @@ import java.util.stream.Collectors;
 @Component
 public class SmartPoolService {
 
+
     @Resource
-    private RestTemplate restTemplate;
+    KlineService klineService;
 
-    /**
-     * 获取支持合约交易的币种列表
-     *
-     * @return
-     */
-    public List<String> listContractSymbol() {
-        JSONObject resp = restTemplate.getForObject(UrlConfig.listSymbolsUrl, JSONObject.class);
-        List<String> symbols = resp.getJSONArray("symbols")
-                .stream()
-                .map(e -> ((Map<String, String>) e).get("symbol"))
-                .collect(Collectors.toList());
-        return symbols;
-    }
-
-    /**
-     * 获取指定币种、k线数据
-     *
-     * @param symbol    币种
-     * @param interval  时间间隔 [1m、3m、5m、15m、30m、1h、2h、4h、6h、8h、12h、 1d、3d、1w、1M]
-     * @param startTime 开始时间戳[毫秒]
-     * @param endTime   结束时间戳[毫秒]
-     * @param limit     返回个数
-     * @return
-     */
-    private List<KlineForBa> listKline(String symbol, String interval, Long startTime, Long endTime, Integer limit) {
-        String reqUrl = String.format(UrlConfig.kLinesUrl, symbol, interval);
-        if (startTime != null) {
-            reqUrl = reqUrl.concat("&startTime=" + startTime);
-        }
-        if (endTime != null) {
-            reqUrl = reqUrl.concat("&endTime=" + endTime);
-        }
-        if (limit != null) {
-            reqUrl = reqUrl.concat("&limit=" + limit);
-        }
-
-        String resp = restTemplate.getForObject(reqUrl, String.class);
-        List<List> klines = JSON.parseArray(resp, List.class);
-
-        // 结果集
-        List<KlineForBa> result = new ArrayList<>(klines.size() * 2);
-
-        for (List cur : klines) {
-            List kline = cur;
-            Long openTime = (long) kline.get(0);
-            Long closeTime = (long) kline.get(6);
-            String openPrice = kline.get(1).toString();
-            String maxPrice = kline.get(2).toString();
-            String minPrice = kline.get(3).toString();
-            String closePrice = kline.get(4).toString();
-            // 交易总额
-            String txAmount = kline.get(7).toString();
-            result.add(KlineForBa.builder()
-                    .openTime(openTime)
-                    .closeTime(closeTime)
-                    .openPrice(new BigDecimal(openPrice))
-                    .maxPrice(new BigDecimal(maxPrice))
-                    .minPrice(new BigDecimal(minPrice))
-                    .closePrice(new BigDecimal(closePrice))
-                    .txAmount(new BigDecimal(txAmount))
-                    .build());
-        }
-        return result;
-    }
 
     /**
      * @param symbol 交易对
@@ -100,14 +38,22 @@ public class SmartPoolService {
      */
     public Double[] shockAnalyze(String symbol, IntervalEnum period) {
         try {
-            Long curTime = System.currentTimeMillis() / 1000 * 1000;
+            // 先更新kline
+            klineService.updateKline(symbol);
+
+            Long curTime = System.currentTimeMillis() / 60000 * 60000;
             Long time = period.time;
-            List<KlineForBa> klines = new ArrayList<>();
-            do {
-                // 每次获取12 个小时的 1m k线数据
-                klines.addAll(listKline(symbol, "1m", curTime - time, null, 720));
-                time -= 43200000;
-            } while (time > 0);
+            List<KlineForBa> klines = klineService.getKline(symbol, time);
+            {
+                if (CollectionUtil.isNotEmpty(klines)) {
+                    SimpleDateFormat yMdHms = new SimpleDateFormat("yyyy-MM-dd:HH:mm:ss");
+                    System.out.println("当前时间：" + yMdHms.format(curTime));
+                    System.out.println("条数：" + klines.size());
+                    System.out.println(String.format("时间分析区间为:[%s,%s]",
+                            yMdHms.format(klines.get(0).getOpenTime()),
+                            yMdHms.format(klines.get(klines.size() - 1).getOpenTime())));
+                }
+            }
 
             // 最高价、最低价、均价
             double maxPrice = klines.stream().max(Comparator.comparing(KlineForBa::getMaxPrice)).get().getMaxPrice().doubleValue();
@@ -205,7 +151,9 @@ public class SmartPoolService {
                     from++;
                 }
                 avgP /= (size * 5 / 100);
-                avgList.add(avgP);
+                if (!Double.isNaN(avgP)) {
+                    avgList.add(avgP);
+                }
             }
 
             /**
@@ -219,7 +167,7 @@ public class SmartPoolService {
             res[3] = meanVariance;
             return res;
         } catch (Exception e) {
-            log.info(e.getMessage());
+            e.printStackTrace();
             return null;
         }
     }
@@ -264,7 +212,7 @@ public class SmartPoolService {
          */
         List<SymbolShock> result = shockModels.stream()
                 // 均值方差小于125 * (假设振幅上限为10%、局部区间取的5%、则最优方差为 2.5^2 * 20=125)
-                .filter(e -> e.getMeanVariance() < 125 * period.time / 1440 / 1000 / 60)
+//                .filter(e -> e.getMeanVariance() < 125 * period.time / 1440 / 1000 / 60)
                 .sorted((e1, e2) -> {
                     Double v1 = e1.getShockVal() / 50;
                     Double v2 = e2.getShockVal() / 50;
