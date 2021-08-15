@@ -26,13 +26,13 @@ import java.math.BigDecimal;
 @ToString
 @NoArgsConstructor
 @AllArgsConstructor
-public class SymbolShock {
+public class SymbolShake {
 
     String symbol;
     /**
      * 根据算法计算得到的震频值
      */
-    double ShockVal;
+    double shakeVal;
 
     /**
      * 震荡区间的振幅绝对值

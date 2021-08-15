@@ -5,7 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import top.ychen5325.smartPool.common.IntervalEnum;
-import top.ychen5325.smartPool.model.SymbolShock;
+import top.ychen5325.smartPool.model.SymbolShake;
 import top.ychen5325.smartPool.server.BackTestService;
 import top.ychen5325.smartPool.server.SmartPoolService;
 import top.ychen5325.smartPool.server.SymbolService;
@@ -26,12 +26,12 @@ import java.util.Map;
 @Component
 public class SmartPoolJob {
 
+    Map<IntervalEnum, List<SymbolShake>> symbolShockPoolCache = new HashMap<>();
 
-    private Map<IntervalEnum, List<SymbolShock>> symbolShockPoolCache = new HashMap<>();
-
-    private Map<IntervalEnum, List<String>> symbolBackTestPoolCache = new HashMap<>();
+    Map<IntervalEnum, List<String>> symbolBackTestPoolCache = new HashMap<>();
 
     List<IntervalEnum> IntervalEnums;
+
     @Resource
     SmartPoolService smartPoolService;
     @Resource
@@ -39,14 +39,17 @@ public class SmartPoolJob {
     @Resource
     SymbolService symbolService;
 
+    @Resource
+    StatisticsJob statisticsJob;
+
     @PostConstruct
-    public void init() {
+    private void init() {
         IntervalEnums = new ArrayList<>();
         IntervalEnums.addAll(IntervalEnum.jqPoolPeriodList);
     }
 
     /**
-     * 每小时一次
+     * 5分钟一次
      */
     @Scheduled(initialDelay = 2 * 1000, fixedRate = 5 * 60 * 1000)
     public void executor() {
@@ -57,13 +60,15 @@ public class SmartPoolJob {
         }
         for (IntervalEnum period : IntervalEnums) {
             // 传入币种列表和周期获取其计算结果
-            List<SymbolShock> symbolShockList = smartPoolService.shockAnalyzeHandler(symbols, period);
-            symbolShockPoolCache.put(period, symbolShockList);
+            List<SymbolShake> symbolShakeList = smartPoolService.klineAnalyze(symbols, period);
+            symbolShockPoolCache.put(period, symbolShakeList);
             // 针对计算结果在指定周期内进行月化回测
 //            List<String> backTestPool = backTestService.backTestHandler(period, symbolShockList);
             // 更新缓存
 //            symbolBackTestPoolCache.put(period, backTestPool);
             log.info("周期:{},震荡池回测池更新成。。。", period.toString());
+            // add
+            statisticsJob.addShakeData(period, symbolShakeList);
         }
     }
 }

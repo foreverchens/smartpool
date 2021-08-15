@@ -8,7 +8,7 @@ import org.springframework.web.client.RestTemplate;
 import top.ychen5325.smartPool.common.CallResult;
 import top.ychen5325.smartPool.common.IntervalEnum;
 import top.ychen5325.smartPool.common.UrlConfig;
-import top.ychen5325.smartPool.model.SymbolShock;
+import top.ychen5325.smartPool.model.SymbolShake;
 
 import javax.annotation.Resource;
 import java.math.BigDecimal;
@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Component
+@Deprecated
 public class BackTestService {
 
     @Resource
@@ -182,19 +183,19 @@ public class BackTestService {
      *
      * @return ["symbol \t monthRate"]
      */
-    public List<String> backTestHandler(IntervalEnum intervalEnum, List<SymbolShock> symbolShocks) {
+    public List<String> backTestHandler(IntervalEnum intervalEnum, List<SymbolShake> symbolShakes) {
         try {
             log.info("【回测池】周期:{},开始。。。。", intervalEnum.toString());
             List<String> backTestPool = new ArrayList<>();
             Long time = intervalEnum.time;
-            for (SymbolShock symbolShock : symbolShocks) {
-                log.info("【回测池】币种:{}。。。", symbolShock.getSymbol());
+            for (SymbolShake symbolShake : symbolShakes) {
+                log.info("【回测池】币种:{}。。。", symbolShake.getSymbol());
                 try {
                     BigDecimal monthRate = this.startRobot(
-                            symbolShock.getSymbol(),
-                            symbolShock.getMaxPrice(),
-                            symbolShock.getMinPrice(),
-                            symbolShock.getIncRate(),
+                            symbolShake.getSymbol(),
+                            symbolShake.getMaxPrice(),
+                            symbolShake.getMinPrice(),
+                            symbolShake.getIncRate(),
                             System.currentTimeMillis() - time,
                             System.currentTimeMillis()
                     );
@@ -202,12 +203,12 @@ public class BackTestService {
                         continue;
                     }
                     backTestPool.add(
-                            symbolShock.getSymbol()
+                            symbolShake.getSymbol()
                                     .concat("\t" + monthRate.multiply(BigDecimal.valueOf(30))
                                             .setScale(2, RoundingMode.DOWN)
                                             .toPlainString()));
                 } catch (Exception e) {
-                    log.error("{},msg:{}", symbolShock.getSymbol(), e.getMessage());
+                    log.error("{},msg:{}", symbolShake.getSymbol(), e.getMessage());
                     e.printStackTrace();
                 }
             }
@@ -225,7 +226,7 @@ public class BackTestService {
 
     public static void main(String[] args) {
         CallResult<List<Map>> result = new RestTemplate().getForObject("http://www.ychen5325.top/api/v1/smart/list/shock/d1/101", CallResult.class);
-        List<SymbolShock> shockModels = result.getData().stream().map(e -> JSON.parseObject(JSON.toJSONString(e), SymbolShock.class)).collect(Collectors.toList());
+        List<SymbolShake> shockModels = result.getData().stream().map(e -> JSON.parseObject(JSON.toJSONString(e), SymbolShake.class)).collect(Collectors.toList());
         List<String> res = new ArrayList<>();
         shockModels.forEach(e -> {
             BackTestService service = new BackTestService();

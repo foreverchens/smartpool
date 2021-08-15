@@ -21,7 +21,7 @@ import java.nio.charset.StandardCharsets;
 @EnableScheduling
 @SpringBootApplication(exclude = {DataSourceAutoConfiguration.class})
 public class SmartPoolApplication {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
         SpringApplication.run(SmartPoolApplication.class, args);
         System.out.println("\n\n\n--SMARTPOOL SUCCESS--\n\n\n");
     }
@@ -33,7 +33,6 @@ public class SmartPoolApplication {
         simpleClientHttpRequestFactory.setReadTimeout(20000);
 
         RestTemplate restTemplate = new RestTemplate(simpleClientHttpRequestFactory);
-
         restTemplate.getMessageConverters()
                 .add(0, new StringHttpMessageConverter(StandardCharsets.UTF_8));
         return restTemplate;

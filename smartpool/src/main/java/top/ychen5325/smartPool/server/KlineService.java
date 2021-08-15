@@ -45,55 +45,52 @@ public class KlineService {
 
     @PostConstruct
     public void init() {
-        // 64min
-        // longestMin = 64;
-        // min
-        // beforeTime = 1000 * 60 * 60L;
-
         List<String> symbols = symbolService.listContractSymbol();
         klineCache = new HashMap<>(symbols.size() * 3 / 2);
         indexCache = new HashMap<>(symbols.size() * 3 / 2);
         // 初始化最近时间kline
-        Long ThreeDaysAgoTime = System.currentTimeMillis() / 1000 / 60 * 1000 * 60 - beforeTime;
+        Long initTime = System.currentTimeMillis() / 1000 / 60 * 1000 * 60 - beforeTime;
         for (String symbol : symbols) {
             KlineForBa[] klines = new KlineForBa[longestMin];
-            klines[0] = KlineForBa.builder().openTime(ThreeDaysAgoTime).build();
+            klines[0] = KlineForBa.builder().openTime(initTime).build();
             klineCache.put(symbol, klines);
             indexCache.put(symbol, 0);
         }
     }
 
+    /**
+     * 更新kline缓存
+     */
     public void updateKline(String symbol) {
-        try {
-            // 指针和kline
-            KlineForBa[] klineArr = klineCache.get(symbol);
-            int index = indexCache.get(symbol);
-            // 获取最新的kline开盘时间
-            KlineForBa lastKline = klineArr[index];
-            long lastOpenTime = lastKline.getOpenTime();
+        // 指针和kline
+        KlineForBa[] klineArr = klineCache.get(symbol);
+        int index = indexCache.get(symbol);
+        // 获取最新的kline开盘时间
+        KlineForBa lastKline = klineArr[index];
+        long lastOpenTime = lastKline.getOpenTime();
 
-            Long curTime = System.currentTimeMillis() / 1000 / 60 * 1000 * 60;
-            while (lastOpenTime < curTime) {
-                // 如果时间差小于12个小时、则全量获取、如果大于12个小时、则获取720条1m级别k线
-                List<KlineForBa> klineList = listKline(symbol, "1m", lastOpenTime, curTime, 720);
-                if (CollectionUtil.isEmpty(klineList)) {
-                    return;
-                }
-                // 先回走一步、后续在前进一步、把其指向的kline更新一下
-                index = (index + klineArr.length - 1) % klineArr.length;
-                for (KlineForBa kline : klineList) {
-                    // 获取下一更新索引
-                    index = (index + 1) % klineArr.length;
-                    klineArr[index] = kline;
-                }
-                indexCache.put(symbol, index);
-                lastOpenTime += 43200000 - 60000;
+        Long curTime = System.currentTimeMillis() / 1000 / 60 * 1000 * 60;
+        while (lastOpenTime < curTime) {
+            // 如果时间差小于12个小时、则全量获取、如果大于12个小时、则获取720条1m级别k线
+            List<KlineForBa> klineList = listKline(symbol, "1m", lastOpenTime, curTime, 720);
+            if (CollectionUtil.isEmpty(klineList)) {
+                break;
             }
-        } catch (Exception ex) {
-            ex.printStackTrace();
+            // 先回走一步、后续在前进一步、把其指向的kline更新一下
+            index = (index + klineArr.length - 1) % klineArr.length;
+            for (KlineForBa kline : klineList) {
+                // 获取下一更新索引
+                index = (index + 1) % klineArr.length;
+                klineArr[index] = kline;
+            }
+            indexCache.put(symbol, index);
+            lastOpenTime += 43200000 - 60000;
         }
     }
 
+    /**
+     * 根据币种和周期获取klineList
+     */
     public List<KlineForBa> getKline(String symbol, long period) {
         // 获取kline和指针
         KlineForBa[] klineArr = klineCache.get(symbol);
@@ -109,7 +106,6 @@ public class KlineService {
             // 最近period时间区间内、没有k线缓存、是不科学的场景、应该抛异常
             return Collections.emptyList();
         }
-
         int startIndex = (curIndex + klineArr.length - timeLen) % klineArr.length;
         // 顺序遍历返回
         List<KlineForBa> result = new ArrayList<>(timeLen * 3 / 2);
@@ -138,7 +134,7 @@ public class KlineService {
      * @param startTime 开始时间戳[毫秒]
      * @param endTime   结束时间戳[毫秒]
      * @param limit     返回个数
-     * @return
+     * @return klineList
      */
     private List<KlineForBa> listKline(String symbol, String interval, Long startTime, Long endTime, Integer limit) {
         try {
@@ -154,10 +150,8 @@ public class KlineService {
             }
             String resp = restTemplate.getForObject(reqUrl, String.class);
             List<List> klines = JSON.parseArray(resp, List.class);
-
             // 结果集
             List<KlineForBa> result = new ArrayList<>(klines.size() * 2);
-
             for (List cur : klines) {
                 List kline = cur;
                 Long openTime = (long) kline.get(0);
@@ -180,7 +174,7 @@ public class KlineService {
             }
             return result;
         } catch (Exception ex) {
-            ex.printStackTrace();
+            log.error("listKline.ex:", ex.getMessage(), ex);
             return Collections.EMPTY_LIST;
         }
     }
