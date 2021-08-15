@@ -9,8 +9,11 @@ import top.ychen5325.smartPool.common.UrlConfig;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -28,12 +31,16 @@ public class SymbolService {
 
     private List<String> symbols;
 
+    private Set<String> sets = new HashSet<>(Arrays.asList("DEFIUSDT", "1000SHIBUSDT", "BTCUSDT_210924", "ETHUSDT_210924",
+            "BTCDOMUSDT"));
+
     @PostConstruct
     private void init() {
         JSONObject resp = restTemplate.getForObject(UrlConfig.listSymbolsUrl, JSONObject.class);
         symbols = resp.getJSONArray("symbols")
                 .stream()
                 .map(e -> ((Map<String, String>) e).get("symbol"))
+                .filter(symbol -> !sets.contains(symbol))
                 .collect(Collectors.toList());
     }
 

@@ -66,7 +66,7 @@ public class SmartPoolJob {
 //            List<String> backTestPool = backTestService.backTestHandler(period, symbolShockList);
             // 更新缓存
 //            symbolBackTestPoolCache.put(period, backTestPool);
-            log.info("周期:{},震荡池回测池更新成。。。", period.toString());
+//            log.info("周期:{},震荡池回测池更新成。。。", period.toString());
             // add
             statisticsJob.addShakeData(period, symbolShakeList);
         }

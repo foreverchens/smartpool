@@ -40,7 +40,7 @@ public class SmartPoolService {
         log.info("周期:{},开始更新震荡池......", period.toString());
         List<SymbolShake> shakeModels = new ArrayList<>(symbols.size() * 2);
         for (String symbol : symbols) {
-            log.info("币种:{} start....", symbol);
+//            log.info("币种:{} start....", symbol);
             /**
              * 获取震荡区间和震频量化值
              * res[0] 震频值 根据算法得到的震荡指标、可直接参考。
@@ -73,7 +73,7 @@ public class SmartPoolService {
          */
         return shakeModels.stream()
                 // 均值方差小于125 * (假设振幅上限为10%、局部区间取的5%、则最优方差为 2.5^2 * 20=125)
-//                .filter(e -> e.getMeanVariance() < 125 * period.time / 1440 / 1000 / 60)
+                .filter(e -> e.getMeanVariance() < 125 * period.time / 1440 / 1000 / 60)
                 .sorted((e1, e2) -> {
                     Double v1 = e1.getShakeVal() / 50;
                     Double v2 = e2.getShakeVal() / 50;
@@ -128,7 +128,7 @@ public class SmartPoolService {
 
                 // 期望是震荡的币种、插针kline就过滤掉
                 if (lowPrice > (avgPrice + maxPrice) / 2 ||
-                        highPrice < (avgPrice + minPrice / 2)) {
+                        highPrice < (avgPrice + minPrice) / 2) {
                     continue;
                 }
 
