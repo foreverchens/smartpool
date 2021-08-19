@@ -25,7 +25,6 @@ public class SmartPoolApplication {
         SpringApplication.run(SmartPoolApplication.class, args);
         System.out.println("\n\n\n--SMARTPOOL SUCCESS--\n\n\n");
     }
-
     @Bean
     public RestTemplate restTemplate() {
         SimpleClientHttpRequestFactory simpleClientHttpRequestFactory = new SimpleClientHttpRequestFactory();

@@ -126,12 +126,6 @@ public class SmartPoolService {
                 double lowPrice = Math.min(openPrice, closePrice);
                 double highPrice = Math.max(openPrice, closePrice);
 
-                // 期望是震荡的币种、插针kline就过滤掉
-                if (lowPrice > (avgPrice + maxPrice) / 2 ||
-                        highPrice < (avgPrice + minPrice) / 2) {
-                    continue;
-                }
-
                 // 撒点、将当前kline经过的点位++
                 for (int i = 0; i < priceCountArr.length; i++) {
                     double curPrice = minPrice + (i * scalePrice);
