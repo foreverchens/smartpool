@@ -17,6 +17,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
+ * 币种相关信息提供服务
+ *
  * @author yyy
  * @wx ychen5325
  * @email yangyouyuhd@163.com
@@ -34,6 +36,9 @@ public class SymbolService {
     private Set<String> sets = new HashSet<>(Arrays.asList("DEFIUSDT", "1000SHIBUSDT", "BTCUSDT_210924", "ETHUSDT_210924",
             "BTCDOMUSDT"));
 
+    /**
+     * 初始化所有币种、基本认为其不可变
+     */
     @PostConstruct
     private void init() {
         JSONObject resp = restTemplate.getForObject(UrlConfig.listSymbolsUrl, JSONObject.class);

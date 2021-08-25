@@ -10,7 +10,6 @@ import javax.annotation.Resource;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -126,17 +125,19 @@ public class SmartPoolService {
                 double lowPrice = Math.min(openPrice, closePrice);
                 double highPrice = Math.max(openPrice, closePrice);
 
-                // 撒点、将当前kline经过的点位++
-                for (int i = 0; i < priceCountArr.length; i++) {
-                    double curPrice = minPrice + (i * scalePrice);
-                    if (lowPrice <= curPrice && highPrice >= curPrice) {
-                        priceCountArr[i]++;
-                    }
-                }
+                // 撒点、计算离minP的价格距离
+                int li = (int) ((lowPrice - minPrice) / scalePrice);
+                int ri = (int) ((highPrice - minPrice) / scalePrice);
+                priceCountArr[li + 1 == len ? li : li + 1]++;
+                priceCountArr[ri + 1 == len ? ri : ri + 1]--;
             }
 
-            // 总点数
-            int totalShakePoint = Arrays.stream(priceCountArr).sum();
+            // 总点数统计
+            int totalShakePoint = priceCountArr[0];
+            for (int i = 1; i < priceCountArr.length; i++) {
+                priceCountArr[i] += priceCountArr[i - 1];
+                totalShakePoint += priceCountArr[i];
+            }
             /**
              * 将得到的点位分布曲线向中收缩10%、定位震荡区间、
              */
@@ -144,7 +145,7 @@ public class SmartPoolService {
             // 至少在两端应该去除的点数和
             int sparseCount = (int) (totalShakePoint * sparseLimit);
             // 双指针记录去除双端点数后的位置、双指针之间即为密集点位区间
-            int left = 0, right = priceCountArr.length - 1;
+            int left = 1, right = priceCountArr.length - 1;
             int tmpCount = 0;
             while (left < right) {
                 if (priceCountArr[left] < priceCountArr[right]) {

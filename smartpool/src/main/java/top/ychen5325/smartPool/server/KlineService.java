@@ -20,6 +20,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
+ * 维护所有币种最近周期的k线数据、并提供各种get函数
+ *
  * @author yyy
  * @wx ychen5325
  * @email yangyouyuhd@163.com
@@ -43,6 +45,9 @@ public class KlineService {
     @Resource
     private SymbolService symbolService;
 
+    /**
+     * 获取所有币种、初始化kline起始点、
+     */
     @PostConstruct
     public void init() {
         List<String> symbols = symbolService.listContractSymbol();
