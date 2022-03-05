@@ -45,12 +45,6 @@ public class SymbolShake {
     BigDecimal maxPrice;
     BigDecimal minPrice;
 
-
-    /**
-     * 最后得到的推荐指数 尚未成熟
-     */
-    double recomRatio;
-
     /**
      * 局部均值方差
      */

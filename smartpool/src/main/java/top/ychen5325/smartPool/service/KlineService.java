@@ -1,17 +1,22 @@
-package top.ychen5325.smartPool.server;
+package top.ychen5325.smartPool.service;
+
+import top.ychen5325.smartPool.common.HttpConstant;
+import top.ychen5325.smartPool.model.KlineForBa;
+
+import com.alibaba.fastjson.JSON;
 
 import cn.hutool.core.collection.CollectionUtil;
-import com.alibaba.fastjson.JSON;
-import lombok.Data;
-import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
-import top.ychen5325.smartPool.common.UrlConfig;
-import top.ychen5325.smartPool.model.KlineForBa;
+
+import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
+
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -31,13 +36,25 @@ import java.util.Map;
 @Component
 public class KlineService {
 
+    /**
+     * key -> 币种
+     * val -> klineList
+     */
     private Map<String, KlineForBa[]> klineCache;
+    /**
+     * key -> 币种
+     * val -> klineCache的索引
+     */
     private Map<String, Integer> indexCache;
 
-    // 三天前开始
+    /**
+     * 三天前开始、可配置
+     */
     private Long beforeTime = 1000 * 60 * 60 * 24 * 3L;
 
-    // 最长维护五天
+    /**
+     * 最长维护五天、可配置
+     */
     private int longestMin = 5 * 24 * 60;
 
     @Resource
@@ -143,7 +160,7 @@ public class KlineService {
      */
     private List<KlineForBa> listKline(String symbol, String interval, Long startTime, Long endTime, Integer limit) {
         try {
-            String reqUrl = String.format(UrlConfig.kLinesUrl, symbol, interval);
+            String reqUrl = String.format(HttpConstant.kLinesUrl, symbol, interval);
             if (startTime != null) {
                 reqUrl = reqUrl.concat("&startTime=" + startTime);
             }

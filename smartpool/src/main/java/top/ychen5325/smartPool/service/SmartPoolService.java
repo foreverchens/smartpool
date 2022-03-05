@@ -1,12 +1,15 @@
-package top.ychen5325.smartPool.server;
+package top.ychen5325.smartPool.service;
 
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
 import top.ychen5325.smartPool.common.IntervalEnum;
 import top.ychen5325.smartPool.model.KlineForBa;
 import top.ychen5325.smartPool.model.SymbolShake;
 
+import org.springframework.stereotype.Component;
+
+import lombok.extern.slf4j.Slf4j;
+
 import javax.annotation.Resource;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
@@ -24,9 +27,8 @@ import java.util.stream.Collectors;
 @Component
 public class SmartPoolService {
 
-
     @Resource
-    KlineService klineService;
+    private KlineService klineService;
 
     /**
      * 入口函数

@@ -1,12 +1,14 @@
 package top.ychen5325.smartpool.service;
 
+import top.ychen5325.smartPool.model.KlineForBa;
+import top.ychen5325.smartPool.service.KlineService;
+import top.ychen5325.smartPool.service.SymbolService;
+
 import cn.hutool.core.util.ObjectUtil;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.web.client.RestTemplate;
-import top.ychen5325.smartPool.model.KlineForBa;
-import top.ychen5325.smartPool.server.KlineService;
-import top.ychen5325.smartPool.server.SymbolService;
 
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
@@ -45,7 +47,7 @@ public class KlineServiceTest {
      * 测试拉取最近10分钟kline更新
      */
     @Test
-    public void tenMinTest() {
+    public void simplePull() {
         String symbol = "BTCUSDT";
         // 设置从10分钟前开始拉取
         // 60min
@@ -53,8 +55,6 @@ public class KlineServiceTest {
         // 10分钟前
         klineService.setBeforeTime(1000 * 60 * 10L);
         klineService.init();
-
-
         klineService.updateKline(symbol);
         KlineForBa[] klineList = klineService.getKlineCache().get(symbol);
         Integer index = klineService.getIndexCache().get(symbol);
@@ -72,12 +72,11 @@ public class KlineServiceTest {
      * 连续更新两次测试并且超过最大可存储区间
      */
     @Test
-    public void twoUpTest() throws InterruptedException {
+    public void twoPull() throws InterruptedException {
         String symbol = "BTCUSDT";
-        // 设置从10分钟前开始拉取
-        // 12min、先拉取10分钟、睡3分钟、在拉取达到覆盖条件
+        // 最长存储12min的kline、从10分钟前拉取、
+        // 连续拉取两次、测试覆盖场景
         klineService.setLongestMin(12);
-        // 10分钟前
         klineService.setBeforeTime(1000 * 60 * 10L);
         klineService.init();
 
@@ -86,9 +85,9 @@ public class KlineServiceTest {
             klineService.updateKline(symbol);
             KlineForBa[] klineList = klineService.getKlineCache().get(symbol);
             Integer index = klineService.getIndexCache().get(symbol);
-            System.out.println("index=" + index);
-            for (int i = 0; i < klineList.length; i++) {
-                KlineForBa kline = klineList[i];
+            System.out.println("输出最近10分钟");
+            for (int i = index + 1; i < index + klineList.length; i++) {
+                KlineForBa kline = klineList[i % klineList.length];
                 if (ObjectUtil.isNotEmpty(kline)) {
                     System.out.println("openTime = " + yMdHms.format(kline.getOpenTime()));
                 }
@@ -97,10 +96,12 @@ public class KlineServiceTest {
         }
     }
 
+    /**
+     * 长稳运行测试
+     */
     @Test
     public void getKlineTest() throws InterruptedException {
         String symbol = "BTCUSDT";
-        long threeMin = 1000 * 60 * 3;
         // 数组长度为10
         klineService.setLongestMin(10);
         // 8分钟前
@@ -109,10 +110,10 @@ public class KlineServiceTest {
         klineService.init();
 
         while (true) {
-            // 获取最近三分钟kline为
+            // 将kline更新到最新
             klineService.updateKline(symbol);
-            List<KlineForBa> klineList = klineService.getKline(symbol, threeMin);
-            System.out.println("当前时间：" + yMdHms.format(System.currentTimeMillis()));
+            // 获取最近四分钟kline
+            List<KlineForBa> klineList = klineService.getKline(symbol, 1000 * 60 * 4);
             for (KlineForBa kline : klineList) {
                 System.out.println(yMdHms.format(kline.getOpenTime()));
             }

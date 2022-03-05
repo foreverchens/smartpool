@@ -1,8 +1,5 @@
 package top.ychen5325.smartPool.common;
 
-import java.util.Arrays;
-import java.util.List;
-
 /**
  * @author yyy
  * @wx ychen5325
@@ -19,13 +16,6 @@ public enum IntervalEnum {
 
     public String interval;
     public Long time;
-
-
-    public static List<IntervalEnum> jqPoolPeriodList;
-
-    static {
-        jqPoolPeriodList = Arrays.asList(d3);
-    }
 
     IntervalEnum(String interval, int time) {
         Long baseTime = 1000 * 60L;

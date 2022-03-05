@@ -22,7 +22,7 @@ public class CallResult<T> {
     public String message;
     private T data;
 
-    public CallResult() {
+    private CallResult() {
     }
 
     public static <T> CallResult<T> response(int code, String msg) {

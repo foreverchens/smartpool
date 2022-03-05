@@ -1,19 +1,20 @@
-package top.ychen5325.smartPool.server;
+package top.ychen5325.smartPool.service;
+
+import top.ychen5325.smartPool.common.HttpConstant;
 
 import com.alibaba.fastjson.JSONObject;
-import lombok.Data;
-import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
-import top.ychen5325.smartPool.common.UrlConfig;
+
+import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
-import java.util.Arrays;
-import java.util.HashSet;
+
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -33,19 +34,16 @@ public class SymbolService {
 
     private List<String> symbols;
 
-    private Set<String> sets = new HashSet<>(Arrays.asList("DEFIUSDT", "1000SHIBUSDT", "BTCUSDT_210924", "ETHUSDT_210924",
-            "BTCDOMUSDT"));
 
     /**
      * 初始化所有币种、基本认为其不可变
      */
     @PostConstruct
     private void init() {
-        JSONObject resp = restTemplate.getForObject(UrlConfig.listSymbolsUrl, JSONObject.class);
-        symbols = resp.getJSONArray("symbols")
+        symbols = restTemplate.getForObject(HttpConstant.listSymbolsUrl, JSONObject.class)
+                .getJSONArray("symbols")
                 .stream()
                 .map(e -> ((Map<String, String>) e).get("symbol"))
-                .filter(symbol -> !sets.contains(symbol))
                 .collect(Collectors.toList());
     }
 
