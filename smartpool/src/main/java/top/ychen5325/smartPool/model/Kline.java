@@ -10,15 +10,14 @@ import java.math.BigDecimal;
 
 /**
  * @author yyy
- * @wx ychen5325
- * @email yangyouyuhd@163.com
+ * @tg t.me/ychen5325
  */
 @Data
 @Builder
 @ToString
 @NoArgsConstructor
 @AllArgsConstructor
-public class KlineForBa {
+public class Kline {
 
     /**
      * [

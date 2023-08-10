@@ -2,8 +2,7 @@ package top.ychen5325.smartPool.common;
 
 /**
  * @author yyy
- * @wx ychen5325
- * @email yangyouyuhd@163.com
+ * @tg t.me/ychen5325
  */
 public enum IntervalEnum {
     /**
@@ -14,8 +13,8 @@ public enum IntervalEnum {
     d1("1d", 1440), d3("3d", 1440 * 3), d5("5d", 1440 * 5),
     w1("1w", 1440 * 7), M1("1M", 1440 * 30);
 
-    public String interval;
-    public Long time;
+    public final String interval;
+    public final Long time;
 
     IntervalEnum(String interval, int time) {
         Long baseTime = 1000 * 60L;

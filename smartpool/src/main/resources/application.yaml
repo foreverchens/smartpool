@@ -1,2 +1,7 @@
 interval:
-  list: d3
+  list: h1
+
+kline:
+  storeHour: 3
+  beforeHour: 2
+

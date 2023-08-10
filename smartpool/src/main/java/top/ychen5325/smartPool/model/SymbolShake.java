@@ -15,11 +15,8 @@ import lombok.ToString;
 import java.math.BigDecimal;
 
 /**
- * 记载某个币种的震荡属性
- *
  * @author yyy
- * @wx ychen5325
- * @email yangyouyuhd@163.com
+ * @tg t.me/ychen5325
  */
 @Data
 @Builder
