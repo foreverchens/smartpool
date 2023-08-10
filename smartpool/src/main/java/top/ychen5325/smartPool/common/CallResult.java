@@ -9,7 +9,7 @@ import lombok.Data;
 @Data
 public class CallResult<T> {
 	private static final long serialVersionUID = -7704551131927143131L;
-	private static final int CODE_FAILURE = 500;
+	private static final int CODE_FAILURE = 400;
 	private static final int CODE_SUCCESS = 200;
 	private Boolean success;
 	private Integer code;
@@ -21,7 +21,7 @@ public class CallResult<T> {
 
 	public static <T> CallResult<T> response(int code, String msg) {
 		boolean success = false;
-		if (code == 200) {
+		if (code == CODE_SUCCESS) {
 			success = true;
 		}
 
@@ -36,11 +36,11 @@ public class CallResult<T> {
 	}
 
 	public static <T> CallResult<T> success() {
-		return new CallResult(true, 200, "Success", (Object) null);
+		return new CallResult(true, CODE_SUCCESS, "Success", (Object) null);
 	}
 
 	public static <T> CallResult<T> success(T resultObject) {
-		return new CallResult(true, 200, "Success", resultObject);
+		return new CallResult(true, CODE_SUCCESS, "Success", resultObject);
 	}
 
 	public static <T> CallResult<T> success(int code, String msg, T resultObject) {
@@ -48,11 +48,11 @@ public class CallResult<T> {
 	}
 
 	public static <T> CallResult<T> failure() {
-		return new CallResult(false, 500, "Failure", (Object) null);
+		return new CallResult(false, CODE_FAILURE, "Failure", (Object) null);
 	}
 
 	public static <T> CallResult<T> failure(String msg) {
-		return new CallResult(false, 500, msg, (Object) null);
+		return new CallResult(false, CODE_FAILURE, msg, (Object) null);
 	}
 
 	public static <T> CallResult<T> failure(int code) {

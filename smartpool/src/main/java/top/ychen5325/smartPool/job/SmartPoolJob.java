@@ -1,5 +1,6 @@
 package top.ychen5325.smartPool.job;
 
+import top.ychen5325.smartPool.common.CallResult;
 import top.ychen5325.smartPool.common.IntervalEnum;
 import top.ychen5325.smartPool.model.SymbolShake;
 import top.ychen5325.smartPool.service.CzClient;
@@ -38,13 +39,16 @@ public class SmartPoolJob {
 	 * 扫描的周期
 	 */
 	private List<IntervalEnum> intervals;
+	@Resource
+	private CzClient czClient;
 
 	@Resource
 	private SmartPoolService smartPoolService;
 
-	@Resource
-	private CzClient czClient;
-
+	/**
+	 * 慢启动
+	 */
+	private int limit = 5;
 
 	@Value("${interval.list}")
 	private void setIntervals(List<String> list) {
@@ -54,24 +58,38 @@ public class SmartPoolJob {
 		}
 	}
 
-
 	/**
 	 * 5分钟一次
 	 */
 	@Scheduled(initialDelay = 2 * 1000, fixedRate = 5 * 60 * 1000)
 	public void executor() {
 		List<String> symbols = czClient.listSymbol();
+
+		// 预防出现HTTP 429问题、
+		// 某币第一次处理时、需要缓存其大量kline数据、过多缓存操作容易出现429问题、
+		// 顾通过limit值来保障每次只处理20个新币、平缓缓存压力
+		symbols = CollectionUtil.sub(symbols, 0, limit);
+		limit = Math.min(limit, symbols.size()) + 20;
+
 		if (CollectionUtil.isEmpty(symbols)) {
 			log.info("symbolService.listContractSymbol() return empty");
 			return;
 		}
-		for (IntervalEnum period : intervals) {
+		for (IntervalEnum interval : intervals) {
 			// 传入币种列表和周期获取其计算结果
-			List<SymbolShake> symbolShakeList = smartPoolService.klineAnalyze(symbols, period);
-			symbolShockPoolCache.put(period, symbolShakeList);
-			log.info("周期:{},震荡池回测池更新成。。。", period.toString());
-			symbolShakeList.forEach(System.out::println);
+			List<SymbolShake> symbolShakeList = smartPoolService.klineAnalyze(symbols, interval);
+			symbolShockPoolCache.put(interval, symbolShakeList);
+			log.info("周期:{},震荡池更新完成。。。", interval);
 		}
+	}
+
+
+	public CallResult<List<SymbolShake>> list(String interval, int top) {
+		List<SymbolShake> shakeList = symbolShockPoolCache.get(IntervalEnum.valueOf(interval));
+		if (CollectionUtil.isEmpty(shakeList)) {
+			return CallResult.failure();
+		}
+		return CallResult.success(CollectionUtil.sub(shakeList, 0, top));
 	}
 }
 

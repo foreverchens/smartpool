@@ -17,14 +17,14 @@ import javax.annotation.Resource;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 
- /**
-  * 维护所有币种最近周期的k线数据
+/**
+ * 维护所有币种最近周期的k线数据
+ *
  * @author yyy
  * @tg t.me/ychen5325
  */
@@ -126,7 +126,7 @@ public class KlineService {
 		int timeLen = Math.toIntExact((lastOpenTime - timeLimit) / 1000 / 60);
 		if (timeLen < 0) {
 			// 最近period时间区间内、没有k线缓存、是不科学的场景、应该抛异常
-			return Collections.emptyList();
+			throw new RuntimeException("timeLen < 0");
 		}
 		int startIndex = (curIndex + klineArr.length - timeLen) % klineArr.length;
 		// 顺序遍历返回
@@ -138,7 +138,7 @@ public class KlineService {
 			Kline cacheKline = klineArr[startIndex % klineArr.length];
 			Kline val = new Kline();
 			if (cacheKline == null) {
-				System.out.println(startIndex);
+				throw new RuntimeException("cacheKline ==null");
 			}
 			BeanUtils.copyProperties(cacheKline, val);
 			result.add(val);

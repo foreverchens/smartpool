@@ -1,7 +1,7 @@
 interval:
-  list: h1
+  list: d3
 
 kline:
-  storeHour: 3
-  beforeHour: 2
+  storeHour: 120
+  beforeHour: 72
 

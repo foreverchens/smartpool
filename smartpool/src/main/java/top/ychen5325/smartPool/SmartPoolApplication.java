@@ -16,14 +16,14 @@ import okhttp3.OkHttpClient;
 public class SmartPoolApplication {
 
 
-    public static void main(String[] args) {
-        SpringApplication.run(SmartPoolApplication.class, args);
-        System.out.println("\n\n\n--SMARTPOOL SUCCESS--\n\n\n");
+	public static void main(String[] args) {
+		SpringApplication.run(SmartPoolApplication.class, args);
+		System.out.println("\n\n\n--SMARTPOOL SUCCESS--\n\n\n");
 
-    }
+	}
 
-    @Bean
-    public OkHttpClient okHttpClient(){
-        return new OkHttpClient();
-    }
+	@Bean
+	public OkHttpClient okHttpClient() {
+		return new OkHttpClient();
+	}
 }

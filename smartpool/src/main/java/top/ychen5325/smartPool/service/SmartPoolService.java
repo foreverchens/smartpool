@@ -32,15 +32,15 @@ public class SmartPoolService {
 	/**
 	 * 入口函数
 	 *
-	 * @param symbols 币种列表
-	 * @param period  周期
+	 * @param symbols  币种列表
+	 * @param interval 周期
 	 * @return 币种的分析结果集合
 	 */
-	public List<SymbolShake> klineAnalyze(List<String> symbols, IntervalEnum period) {
-		log.info("周期:{},开始更新震荡池......", period.toString());
+	public List<SymbolShake> klineAnalyze(List<String> symbols, IntervalEnum interval) {
+		log.info("周期:{},开始更新震荡池......", interval.toString());
 		List<SymbolShake> shakeModels = new ArrayList<>(symbols.size() * 2);
 		for (String symbol : symbols) {
-           log.info("币种:{} start....", symbol);
+			log.info("币种:{} start....", symbol);
 			/**
 			 * 获取震荡区间和震频量化值
 			 * res[0] 震频值 根据算法得到的震荡指标、可直接参考。
@@ -48,13 +48,13 @@ public class SmartPoolService {
 			 * res[2] 震荡区间上限价格
 			 * res[3] 均值方差、方差整体平稳情况、数值越小、相对越平稳
 			 */
-			Double[] res = this.doKlineAnalyze(symbol, period);
+			Double[] res = this.doKlineAnalyze(symbol, interval);
 			if (Objects.isNull(res)) {
 				continue;
 			}
 			// 结果为 ${incRate}%  震荡区间上下跨幅
 			BigDecimal incRate = BigDecimal.valueOf((res[2] - res[1]) * 100 / res[1]).setScale(3,
-                    RoundingMode.DOWN);
+					RoundingMode.DOWN);
 			double meanVariance = res[3];
 			shakeModels.add(SymbolShake.builder().symbol(symbol).shakeVal(res[0].longValue()).incRate(incRate).maxPrice(BigDecimal.valueOf(res[2])).minPrice(BigDecimal.valueOf(res[1])).meanVariance(meanVariance).build());
 		}
@@ -67,7 +67,7 @@ public class SmartPoolService {
 		 */
 		return shakeModels.stream()
 						  // 均值方差小于125 * (假设振幅上限为10%、局部区间取的5%、则最优方差为 2.5^2 * 20=125)
-						  .filter(e -> e.getMeanVariance() < 125 * period.time / 1440 / 1000 / 60).sorted((e1, e2) -> {
+						  .filter(e -> e.getMeanVariance() < 125 * interval.time / 1440 / 1000 / 60).sorted((e1, e2) -> {
 					Double v1 = e1.getShakeVal() / 50;
 					Double v2 = e2.getShakeVal() / 50;
 					int res = v2.intValue() - v1.intValue();
@@ -98,15 +98,16 @@ public class SmartPoolService {
 			double maxPrice = 0;
 			try {
 				// 最高价、最低价、均价
-				maxPrice = klines.stream().max(Comparator.comparing(Kline::getMaxPrice)).get().getMaxPrice().doubleValue();
+				maxPrice =
+						klines.stream().max(Comparator.comparing(Kline::getMaxPrice)).get().getMaxPrice().doubleValue();
 			} catch (Exception ex) {
 				System.out.println(ex.getMessage());
 			}
 
 			double minPrice =
-                    klines.stream().min(Comparator.comparing(Kline::getMinPrice)).get().getMinPrice().doubleValue();
+					klines.stream().min(Comparator.comparing(Kline::getMinPrice)).get().getMinPrice().doubleValue();
 			double avgPrice =
-                    klines.stream().map(e -> e.getOpenPrice().add(e.getClosePrice()).doubleValue()).collect(Collectors.averagingDouble(e -> e)) / 2;
+					klines.stream().map(e -> e.getOpenPrice().add(e.getClosePrice()).doubleValue()).collect(Collectors.averagingDouble(e -> e)) / 2;
 
 			/**
 			 * 均价的千分之一作为分布曲线最小单位
@@ -158,7 +159,7 @@ public class SmartPoolService {
 			}
 			// 定义已经确定的分析数据
 			Double[] res = {1D * totalShakePoint, (minPrice + scalePrice * left),
-                    (minPrice + scalePrice * right), 0.0};
+					(minPrice + scalePrice * right), 0.0};
 			int size = klines.size();
 			// 单边行情分析
 			/**
@@ -173,7 +174,7 @@ public class SmartPoolService {
 			 */
 			// 整体平均价格
 			double overallAvgPrice =
-                    klines.stream().collect(Collectors.averagingDouble(e -> e.getOpenPrice().add(e.getClosePrice()).doubleValue())) / 2;
+					klines.stream().collect(Collectors.averagingDouble(e -> e.getOpenPrice().add(e.getClosePrice()).doubleValue())) / 2;
 			// 以5%为最小区间分割、得到20个小区间的均值集合
 			List<Double> avgList = new ArrayList<>();
 			for (int i = 0; i < 20; i++) {
@@ -195,7 +196,7 @@ public class SmartPoolService {
 			 * 得到各小区间的方差并求和
 			 */
 			Double meanVariance =
-                    avgList.stream().map(avgP -> BigDecimal.valueOf(Math.pow(((avgP - overallAvgPrice) / overallAvgPrice * 100), 2)).setScale(2, RoundingMode.DOWN).doubleValue()).collect(Collectors.summingDouble(e -> e));
+					avgList.stream().map(avgP -> BigDecimal.valueOf(Math.pow(((avgP - overallAvgPrice) / overallAvgPrice * 100), 2)).setScale(2, RoundingMode.DOWN).doubleValue()).collect(Collectors.summingDouble(e -> e));
 			// 方差值
 			res[3] = meanVariance;
 			return res;
