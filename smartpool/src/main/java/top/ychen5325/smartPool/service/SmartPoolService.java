@@ -100,8 +100,9 @@ public class SmartPoolService {
 				// 最高价、最低价、均价
 				maxPrice =
 						klines.stream().max(Comparator.comparing(Kline::getMaxPrice)).get().getMaxPrice().doubleValue();
-			} catch (Exception ex) {
-				System.out.println(ex.getMessage());
+			} catch (RuntimeException ex) {
+				log.error(symbol + "---" + ex.getMessage());
+				throw ex;
 			}
 
 			double minPrice =

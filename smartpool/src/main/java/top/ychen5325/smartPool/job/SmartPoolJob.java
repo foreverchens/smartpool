@@ -61,7 +61,7 @@ public class SmartPoolJob {
 	/**
 	 * 5分钟一次
 	 */
-	@Scheduled(initialDelay = 2 * 1000, fixedRate = 5 * 60 * 1000)
+	@Scheduled(initialDelay = 2 * 1000, fixedRate = 2 * 60 * 1000)
 	public void executor() {
 		List<String> symbols = czClient.listSymbol();
 
@@ -69,7 +69,7 @@ public class SmartPoolJob {
 		// 某币第一次处理时、需要缓存其大量kline数据、过多缓存操作容易出现429问题、
 		// 顾通过limit值来保障每次只处理20个新币、平缓缓存压力
 		symbols = CollectionUtil.sub(symbols, 0, limit);
-		limit = Math.min(limit, symbols.size()) + 20;
+		limit = Math.min(limit, symbols.size()) + 10;
 
 		if (CollectionUtil.isEmpty(symbols)) {
 			log.info("symbolService.listContractSymbol() return empty");

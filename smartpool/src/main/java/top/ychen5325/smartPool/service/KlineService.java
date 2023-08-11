@@ -71,7 +71,7 @@ public class KlineService {
 		Long initTime =
 				System.currentTimeMillis() / 1000 / 60 * 1000 * 60 - beforeHours * 60 * 60 * 1000;
 		for (String symbol : symbols) {
-			Kline[] klines = new Kline[maxStoreHours * 60];
+			Kline[] klines = new Kline[maxStoreHours * 60 + 1];
 			klines[0] = Kline.builder().openTime(initTime).build();
 			klineCache.put(symbol, klines);
 			indexCache.put(symbol, 0);
