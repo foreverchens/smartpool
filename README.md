@@ -130,4 +130,23 @@
 
 > [联系我](https://t.me/ychen5325)
 
+## 4、现存问题
+
+### 4.1、kline的存储结构
+
+> 在KlineService内、我们使用Map<String,Kline[]>结构存储每个币的过去一段时间的kline数据、这里的数组可换成队列、复杂度会减不少
+
+#### 4.2、内存高占用
+
+这是执行了 jmap -histo:live $pid 的响应结果
+
+```shell
+num     #instances         #bytes  class name
+----------------------------------------------
+   1:      40825003     1633000120  java.math.BigDecimal
+   2:      16330256      391926144  java.lang.Long
+   3:       8164989      391919472  top.ychen5325.smartPool.model.Kline
+```
+
+高占用的BigDecimal和Long实例基本都属于Kline的内部字段、特别是BigDecimal实例、可考虑使用double或者float
 

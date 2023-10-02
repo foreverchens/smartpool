@@ -24,7 +24,7 @@ import java.util.Map;
 
 /**
  * 维护所有币种最近周期的k线数据
- *
+ * todo kline数组可优化为队列
  * @author yyy
  * @tg t.me/ychen5325
  */

@@ -39,7 +39,10 @@ import java.util.Objects;
 @Slf4j
 @Component
 public class CzClient {
-
+	/**
+	 * 币列表的过期时间、设置十天更新一次
+	 */
+	private long expireTime;
 	private List<String> symbols;
 
 	@Resource
@@ -48,6 +51,7 @@ public class CzClient {
 
 	@PostConstruct
 	private void init() {
+		expireTime = System.currentTimeMillis() + (1000 * 60 * 60 * 24 * 10);
 		symbols = listSymbol();
 	}
 
@@ -55,7 +59,7 @@ public class CzClient {
 	 * 非幂等的CZ API接口...
 	 */
 	public List<String> listSymbol() {
-		if (CollectionUtil.isNotEmpty(symbols)) {
+		if (CollectionUtil.isNotEmpty(symbols) && System.currentTimeMillis() < expireTime) {
 			return symbols;
 		}
 		Request request = new Request.Builder().url(UrlEnum.listSymbol).get().build();
@@ -65,8 +69,7 @@ public class CzClient {
 			if (response.code() != HttpStatus.HTTP_OK) {
 				throw new RuntimeException(response.body().string());
 			}
-			JSONArray symbolsJsonArr = JSON.parseObject(response.body().string()).getJSONArray(
-					"symbols");
+			JSONArray symbolsJsonArr = JSON.parseObject(response.body().string()).getJSONArray("symbols");
 			for (int i = 0; i < symbolsJsonArr.size(); i++) {
 				JSONObject jsonObj = symbolsJsonArr.getJSONObject(i);
 				if (symbolFilter(jsonObj)) {
@@ -77,11 +80,13 @@ public class CzClient {
 		} catch (IOException ex) {
 			throw new RuntimeException(ex.getMessage(), ex);
 		}
+		expireTime = System.currentTimeMillis() + (1000 * 60 * 60 * 24 * 10);
 		return symbols;
 	}
 
 	/**
 	 * 无法通过api获取kline
+	 * 其他低价值标的
 	 */
 	private static boolean symbolFilter(JSONObject jsonObj) {
 		String status = jsonObj.getString("status");
@@ -94,8 +99,7 @@ public class CzClient {
 		if (!"COIN".equalsIgnoreCase(jsonObj.getString("underlyingType"))) {
 			return true;
 		}
-		List<String> underlyingSubType = jsonObj.getObject("underlyingSubType",
-				new TypeReference<List<String>>() {});
+		List<String> underlyingSubType = jsonObj.getObject("underlyingSubType", new TypeReference<List<String>>() {});
 		if (CollectionUtil.isNotEmpty(underlyingSubType)) {
 			if ("INDEX".equalsIgnoreCase(underlyingSubType.get(0))) {
 				return true;
@@ -109,6 +113,11 @@ public class CzClient {
 			return true;
 		}
 		if (symbol.contains("1000") || "DODOXUSDT".equalsIgnoreCase(symbol)) {
+			return true;
+		}
+		// 最近一个月上线的不要
+		long onboardDate = jsonObj.getLongValue("onboardDate");
+		if (onboardDate > System.currentTimeMillis() - (1000L * 60 * 60 * 24 * 30)) {
 			return true;
 		}
 		return false;
@@ -125,8 +134,7 @@ public class CzClient {
 			if (response.code() != HttpStatus.HTTP_OK) {
 				throw new RuntimeException(JSON.toJSONString(param) + response.body().string());
 			}
-			List<List> klineList = JSON.parseObject(response.body().string(),
-					new TypeReference<List<List>>() {});
+			List<List> klineList = JSON.parseObject(response.body().string(), new TypeReference<List<List>>() {});
 			List<Kline> result = new ArrayList<>(klineList.size() * 2);
 			for (List kline : klineList) {
 				Long openTime = (long) kline.get(0);
@@ -137,7 +145,8 @@ public class CzClient {
 				String closePrice = kline.get(4).toString();
 				// 交易总额
 				String txAmount = kline.get(7).toString();
-				result.add(Kline.builder().openTime(openTime).closeTime(closeTime).openPrice(new BigDecimal(openPrice)).maxPrice(new BigDecimal(maxPrice)).minPrice(new BigDecimal(minPrice)).closePrice(new BigDecimal(closePrice)).txAmount(new BigDecimal(txAmount)).build());
+				result.add(Kline.builder().openTime(openTime).closeTime(closeTime).openPrice(new BigDecimal(openPrice)).maxPrice(new BigDecimal(maxPrice)).minPrice(new BigDecimal(minPrice))
+								.closePrice(new BigDecimal(closePrice)).txAmount(new BigDecimal(txAmount)).build());
 			}
 			return result;
 		} catch (IOException ex) {
@@ -166,5 +175,11 @@ public class CzClient {
 			sb.append("&");
 		}
 		return sb.deleteCharAt(sb.length() - 1).toString();
+	}
+
+	public static void main(String[] args) {
+		CzClient czClient = new CzClient();
+		czClient.okHttpClient = new OkHttpClient();
+		czClient.init();
 	}
 }
