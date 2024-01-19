@@ -19,7 +19,7 @@ public class ShakeScore {
 	String symbol;
 	int score;
 	String period;
-	String amplitude;
+	double amplitude;
 	String lowP;
 	String highP;
 	String variance;

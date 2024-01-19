@@ -1,6 +1,8 @@
 package icu.smartpool.service;
 
 
+import com.alibaba.fastjson.JSON;
+
 import icu.smartpool.common.Config;
 import icu.smartpool.model.H1Kline;
 import icu.smartpool.model.Kline;
@@ -64,6 +66,7 @@ public class SmartPoolService {
 										 .interval("1m")
 										 .startTime(startTime)
 										 .endTime(startTime + HOUR)
+										 .limit(60)
 										 .build();
 			List<Kline> klines = CzClient.listKline(param);
 			BigDecimal lowP = BigDecimal.valueOf(Long.MAX_VALUE);
@@ -72,24 +75,29 @@ public class SmartPoolService {
 				lowP = lowP.compareTo(kline.getLowP()) > 0 ? kline.getLowP() : lowP;
 				highP = highP.compareTo(kline.getHighP()) < 0 ? kline.getHighP() : highP;
 			}
-			log.info("lowP:{},highP:{}", lowP, highP);
-			BigDecimal arrScale = lowP.multiply(BigDecimal.valueOf(0.001));
+			BigDecimal arrScale = lowP.multiply(BigDecimal.valueOf(0.0001));
 			int[] dataArr = new int[(highP.subtract(lowP).divide(arrScale, 1, RoundingMode.DOWN).intValue())];
 			for (Kline kline : klines) {
 				BigDecimal openP = kline.getOpenP();
 				BigDecimal closeP = kline.getCloseP();
+				if (openP.compareTo(closeP) > 0) {
+					//  开盘价高于收盘价、即下跌、交换数值使closeP大于openP、方便计算
+					BigDecimal tmp = closeP;
+					closeP = openP;
+					openP = tmp;
+				}
+				if (closeP.subtract(openP).compareTo(arrScale) < 0) {
+					// 低波动k线过滤
+					continue;
+				}
 				int startIndex = openP.subtract(lowP).divide(arrScale, 1, RoundingMode.DOWN).intValue();
 				int endIndex = closeP.subtract(lowP).divide(arrScale, 1, RoundingMode.DOWN).intValue();
-				if (startIndex > endIndex) {
-					int tmp = endIndex;
-					endIndex = startIndex;
-					startIndex = tmp;
-				}
 				for (int i = startIndex; i < endIndex; i++) {
 					dataArr[i]++;
 				}
 			}
 			H1Kline newH1Kline = H1Kline.builder().openT(startTime).lowP(lowP).highP(highP).dataArr(dataArr).build();
+			log.info(JSON.toJSONString(newH1Kline));
 			if (deque.size() >= DEQUE_SIZE) {
 				deque.removeLast();
 			}
@@ -107,7 +115,7 @@ public class SmartPoolService {
 			maxP = maxP.compareTo(kline.getHighP()) < 0 ? kline.getHighP() : maxP;
 		}
 		log.info("lowP:{},highP:{}", minP, maxP);
-		BigDecimal arrScale = minP.multiply(BigDecimal.valueOf(0.001));
+		BigDecimal arrScale = minP.multiply(BigDecimal.valueOf(0.0001));
 		int[] dataArr = new int[(maxP.subtract(minP).divide(arrScale, 1, RoundingMode.DOWN).intValue())];
 		for (H1Kline kline : klineList) {
 			int[] itemDataArr = kline.getDataArr();
@@ -141,13 +149,11 @@ public class SmartPoolService {
 		BigDecimal amplitude = highP.subtract(lowP).multiply(BigDecimal.valueOf(100)).divide(lowP, 2, RoundingMode.DOWN);
 		int score = BigDecimal.valueOf(countPt * 0.8).divide(amplitude, 1, RoundingMode.DOWN).intValue();
 		log.info("震荡区间:[{},{}],震荡得分:{}", lowP, highP, score);
-		return ShakeScore.builder()
-						 .symbol(symbol)
-						 .period(String.valueOf(hours))
-						 .score(score)
-						 .lowP(lowP.toEngineeringString())
-						 .highP(highP.toEngineeringString())
-						 .amplitude(amplitude.toEngineeringString())
+		return ShakeScore.builder().symbol(symbol)
+						 .period(String.valueOf(hours)).score(score)
+						 .lowP(lowP.setScale(2, RoundingMode.DOWN).toEngineeringString())
+						 .highP(highP.setScale(2, RoundingMode.DOWN).toEngineeringString())
+						 .amplitude(amplitude.setScale(2,RoundingMode.DOWN).doubleValue())
 						 .build();
 	}
 }
