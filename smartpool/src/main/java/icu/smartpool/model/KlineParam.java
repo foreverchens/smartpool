@@ -1,6 +1,4 @@
-package top.ychen5325.smartPool.model;/**
- *
- */
+package icu.smartpool.model;
 
 import lombok.Builder;
 import lombok.Data;

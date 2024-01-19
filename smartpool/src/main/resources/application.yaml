@@ -1,7 +1,0 @@
-interval:
-  list: d3
-
-kline:
-  storeHour: 120
-  beforeHour: 72
-
