@@ -1,5 +1,6 @@
 package icu.smartpool.common;
 
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
 
@@ -10,7 +11,21 @@ import java.util.List;
 public interface Config {
 
 	String LIST_SYMBOL = "https://api.binance.com/api/v3/exchangeInfo";
+
 	String KLINE = "https://api.binance.com/api/v3/klines";
-	int MAX_DAY = 7;
-	List<Integer> CYCLE_LIST = Arrays.asList(24 * 7);
+
+	/**
+	 * 最大可分析周期
+	 */
+	int MAX_DAY = 1;
+
+	/**
+	 * 分析周期列表
+	 */
+	List<Integer> CYCLE_LIST = Arrays.asList(MAX_DAY * 24);
+
+	/**
+	 * 分析粒度、与周期正比
+	 */
+	BigDecimal SCALE = BigDecimal.valueOf(0.0001);
 }

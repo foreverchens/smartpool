@@ -12,8 +12,12 @@ import lombok.Data;
 public class KlineParam {
 
 	private String symbol;
+
 	private String interval;
+
 	private Long startTime;
+
 	private Long endTime;
+
 	private Integer limit;
 }

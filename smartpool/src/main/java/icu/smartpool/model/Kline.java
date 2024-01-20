@@ -18,9 +18,13 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Kline {
-    Long openT;
-    BigDecimal openP;
-    BigDecimal closeP;
-    BigDecimal highP;
-    BigDecimal lowP;
+	Long openT;
+
+	BigDecimal openP;
+
+	BigDecimal closeP;
+
+	BigDecimal highP;
+
+	BigDecimal lowP;
 }

@@ -17,10 +17,20 @@ import lombok.ToString;
 @AllArgsConstructor
 public class ShakeScore {
 	String symbol;
+
+	/**
+	 * 最终点位密度得分、正相关总点数、负相关振幅
+	 */
 	int score;
-	String period;
+
+	/**
+	 * 区间的振幅
+	 */
 	double amplitude;
+
 	String lowP;
+
 	String highP;
+
 	String variance;
 }

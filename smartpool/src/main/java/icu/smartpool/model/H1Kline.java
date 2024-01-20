@@ -19,7 +19,13 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class H1Kline {
 	Long openT;
+
 	BigDecimal lowP;
+
 	BigDecimal highP;
+
+	/**
+	 * 该小时内的价格点位分布图
+	 */
 	int[] dataArr;
 }

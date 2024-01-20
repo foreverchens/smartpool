@@ -29,7 +29,9 @@ import java.util.Map;
 public class SmartPoolService {
 
 	private static final long HOUR = 1000 * 60 * 60;
+
 	private static final int DEQUE_SIZE = Config.MAX_DAY * 24;
+
 	private static final Map<String, Deque<H1Kline>> KLINE_CACHE;
 
 	static {
@@ -40,87 +42,27 @@ public class SmartPoolService {
 		}
 	}
 
-	private static List<H1Kline> listH1Kline(String symbol, int hours) {
-		Deque<H1Kline> deque = KLINE_CACHE.get(symbol);
-		// 检查更新
-		updateH1Kline(symbol);
-		// 获取数据
-		Iterator<H1Kline> iterator = deque.iterator();
-		List<H1Kline> rlt = new ArrayList<>(hours);
-		while (iterator.hasNext() && hours-- > 0) {
-			rlt.add(iterator.next());
-		}
-		return rlt;
-	}
-
-	private static void updateH1Kline(String symbol) {
-		Deque<H1Kline> deque = KLINE_CACHE.get(symbol);
-		long lastTime = System.currentTimeMillis() / HOUR * HOUR - HOUR;
-		while (deque.isEmpty() || deque.peek().getOpenT() < lastTime) {
-			long startTime = deque.isEmpty()
-					? System.currentTimeMillis() / HOUR * HOUR - DEQUE_SIZE * HOUR
-					: deque.peek().getOpenT() + HOUR;
-
-			KlineParam param = KlineParam.builder()
-										 .symbol(symbol)
-										 .interval("1m")
-										 .startTime(startTime)
-										 .endTime(startTime + HOUR)
-										 .limit(60)
-										 .build();
-			List<Kline> klines = CzClient.listKline(param);
-			BigDecimal lowP = BigDecimal.valueOf(Long.MAX_VALUE);
-			BigDecimal highP = BigDecimal.ZERO;
-			for (Kline kline : klines) {
-				lowP = lowP.compareTo(kline.getLowP()) > 0 ? kline.getLowP() : lowP;
-				highP = highP.compareTo(kline.getHighP()) < 0 ? kline.getHighP() : highP;
-			}
-			BigDecimal arrScale = lowP.multiply(BigDecimal.valueOf(0.0001));
-			int[] dataArr = new int[(highP.subtract(lowP).divide(arrScale, 1, RoundingMode.DOWN).intValue())];
-			for (Kline kline : klines) {
-				BigDecimal openP = kline.getOpenP();
-				BigDecimal closeP = kline.getCloseP();
-				if (openP.compareTo(closeP) > 0) {
-					//  开盘价高于收盘价、即下跌、交换数值使closeP大于openP、方便计算
-					BigDecimal tmp = closeP;
-					closeP = openP;
-					openP = tmp;
-				}
-				if (closeP.subtract(openP).compareTo(arrScale) < 0) {
-					// 低波动k线过滤
-					continue;
-				}
-				int startIndex = openP.subtract(lowP).divide(arrScale, 1, RoundingMode.DOWN).intValue();
-				int endIndex = closeP.subtract(lowP).divide(arrScale, 1, RoundingMode.DOWN).intValue();
-				for (int i = startIndex; i < endIndex; i++) {
-					dataArr[i]++;
-				}
-			}
-			H1Kline newH1Kline = H1Kline.builder().openT(startTime).lowP(lowP).highP(highP).dataArr(dataArr).build();
-			log.info(JSON.toJSONString(newH1Kline));
-			if (deque.size() >= DEQUE_SIZE) {
-				deque.removeLast();
-			}
-			deque.push(newH1Kline);
-		}
-	}
-
 	public static ShakeScore analyze(String symbol, int hours) {
 		List<H1Kline> klineList = listH1Kline(symbol, hours);
 
 		BigDecimal minP = BigDecimal.valueOf(Long.MAX_VALUE);
 		BigDecimal maxP = BigDecimal.ZERO;
 		for (H1Kline kline : klineList) {
-			minP = minP.compareTo(kline.getLowP()) > 0 ? kline.getLowP() : minP;
-			maxP = maxP.compareTo(kline.getHighP()) < 0 ? kline.getHighP() : maxP;
+			minP = minP.compareTo(kline.getLowP()) > 0
+				   ? kline.getLowP()
+				   : minP;
+			maxP = maxP.compareTo(kline.getHighP()) < 0
+				   ? kline.getHighP()
+				   : maxP;
 		}
-		log.info("lowP:{},highP:{}", minP, maxP);
-		BigDecimal arrScale = minP.multiply(BigDecimal.valueOf(0.0001));
-		int[] dataArr = new int[(maxP.subtract(minP).divide(arrScale, 1, RoundingMode.DOWN).intValue())];
+		BigDecimal arrScale = minP.multiply(Config.SCALE);
+		int[] dataArr = new int[(maxP.subtract(minP).divide(arrScale, 1, RoundingMode.DOWN)
+									 .intValue())];
 		for (H1Kline kline : klineList) {
 			int[] itemDataArr = kline.getDataArr();
 			BigDecimal itemLowP = kline.getLowP();
-			int startIndex = itemLowP.subtract(minP).divide(arrScale, 1, RoundingMode.DOWN).intValue();
+			int startIndex = itemLowP.subtract(minP).divide(arrScale, 1, RoundingMode.DOWN)
+									 .intValue();
 			for (int i = 0; i < itemDataArr.length; i++) {
 				dataArr[startIndex + i] += itemDataArr[i];
 			}
@@ -146,14 +88,91 @@ public class SmartPoolService {
 		}
 		BigDecimal lowP = minP.add(arrScale.multiply(BigDecimal.valueOf(l)));
 		BigDecimal highP = minP.add(arrScale.multiply(BigDecimal.valueOf(r)));
-		BigDecimal amplitude = highP.subtract(lowP).multiply(BigDecimal.valueOf(100)).divide(lowP, 2, RoundingMode.DOWN);
-		int score = BigDecimal.valueOf(countPt * 0.8).divide(amplitude, 1, RoundingMode.DOWN).intValue();
-		log.info("震荡区间:[{},{}],震荡得分:{}", lowP, highP, score);
-		return ShakeScore.builder().symbol(symbol)
-						 .period(String.valueOf(hours)).score(score)
-						 .lowP(lowP.setScale(2, RoundingMode.DOWN).toEngineeringString())
-						 .highP(highP.setScale(2, RoundingMode.DOWN).toEngineeringString())
-						 .amplitude(amplitude.setScale(2,RoundingMode.DOWN).doubleValue())
-						 .build();
+		BigDecimal amplitude = highP.subtract(lowP).multiply(BigDecimal.valueOf(100)).divide(lowP,
+																							 2,
+																							 RoundingMode.DOWN);
+		int score = BigDecimal.valueOf(countPt * 0.8).divide(amplitude, 1, RoundingMode.DOWN)
+							  .intValue();
+		return ShakeScore.builder().symbol(symbol).score(score).lowP(
+				lowP.setScale(4, RoundingMode.DOWN).toEngineeringString()).highP(
+				highP.setScale(4, RoundingMode.DOWN).toEngineeringString()).amplitude(
+				amplitude.setScale(2, RoundingMode.DOWN).doubleValue()).build();
+	}
+
+	private static List<H1Kline> listH1Kline(String symbol, int hours) {
+		Deque<H1Kline> deque = KLINE_CACHE.get(symbol);
+		// 检查更新
+		updateH1Kline(symbol);
+		// 获取数据
+		Iterator<H1Kline> iterator = deque.iterator();
+		List<H1Kline> rlt = new ArrayList<>(hours);
+		while (iterator.hasNext() && hours-- > 0) {
+			rlt.add(iterator.next());
+		}
+		return rlt;
+	}
+
+	private static void updateH1Kline(String symbol) {
+		Deque<H1Kline> deque = KLINE_CACHE.get(symbol);
+		long lastTime = System.currentTimeMillis() / HOUR * HOUR - HOUR;
+		while (deque.isEmpty() || deque.peek().getOpenT() < lastTime) {
+			long startTime = deque.isEmpty()
+							 ? System.currentTimeMillis() / HOUR * HOUR - DEQUE_SIZE * HOUR
+							 : deque.peek().getOpenT() + HOUR;
+
+			KlineParam param = KlineParam.builder()
+										 .symbol(symbol)
+										 .interval("1m")
+										 .startTime(startTime)
+										 .endTime(startTime + HOUR)
+										 .limit(60)
+										 .build();
+			List<Kline> klines = CzClient.listKline(param);
+
+			H1Kline newH1Kline = klineListToH1Kline(klines);
+			newH1Kline.setOpenT(startTime);
+			log.debug(JSON.toJSONString(newH1Kline));
+			if (deque.size() >= DEQUE_SIZE) {
+				deque.removeLast();
+			}
+			deque.push(newH1Kline);
+		}
+	}
+
+	private static H1Kline klineListToH1Kline(List<Kline> klines) {
+		BigDecimal lowP = BigDecimal.valueOf(Long.MAX_VALUE);
+		BigDecimal highP = BigDecimal.ZERO;
+		for (Kline kline : klines) {
+			lowP = lowP.compareTo(kline.getLowP()) > 0
+				   ? kline.getLowP()
+				   : lowP;
+			highP = highP.compareTo(kline.getHighP()) < 0
+					? kline.getHighP()
+					: highP;
+		}
+		BigDecimal arrScale = lowP.multiply(Config.SCALE);
+		int[] dataArr = new int[(highP.subtract(lowP).divide(arrScale, 1, RoundingMode.DOWN)
+									  .intValue())];
+		for (Kline kline : klines) {
+			BigDecimal openP = kline.getOpenP();
+			BigDecimal closeP = kline.getCloseP();
+			if (openP.compareTo(closeP) > 0) {
+				//  开盘价高于收盘价、即下跌、交换数值使closeP大于openP、方便计算
+				BigDecimal tmp = closeP;
+				closeP = openP;
+				openP = tmp;
+			}
+			if (closeP.subtract(openP).compareTo(arrScale) < 0) {
+				// 低波动k线过滤
+				continue;
+			}
+			int startIndex =
+					openP.subtract(lowP).divide(arrScale, 1, RoundingMode.DOWN).intValue();
+			int endIndex = closeP.subtract(lowP).divide(arrScale, 1, RoundingMode.DOWN).intValue();
+			for (int i = startIndex; i < endIndex; i++) {
+				dataArr[i]++;
+			}
+		}
+		return H1Kline.builder().lowP(lowP).highP(highP).dataArr(dataArr).build();
 	}
 }

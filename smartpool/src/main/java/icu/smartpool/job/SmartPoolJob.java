@@ -22,9 +22,12 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class SmartPoolJob {
 
-	private static final int LIMIT = 3;
+	private static final int LIMIT = 5;
+
 	private static final int MIN_AMPLITUDE = 2;
+
 	private static final int MAX_AMPLITUDE = 10;
+
 	/**
 	 * map结构: cycle -> 该周期下所有币对的震荡数据
 	 * 子集合结构:
@@ -77,16 +80,6 @@ public class SmartPoolJob {
 		}
 	}
 
-	private static int range(ShakeScore e2) {
-		int amplitude = (int) e2.getAmplitude();
-		// 区间幅度过大过小都不行、
-		// 分为[2,4),[4,6),[6,8),[8,10)四个区间、振幅所落区间相同、则比较score项
-		if (amplitude < MIN_AMPLITUDE || amplitude >= MAX_AMPLITUDE) {
-			return 0;
-		}
-		return amplitude / 2;
-	}
-
 	private static void refresh() {
 		for (Map.Entry<Integer, List<List<ShakeScore>>> entry : DATA_CACHE.entrySet()) {
 			Integer cycle = entry.getKey();
@@ -102,6 +95,16 @@ public class SmartPoolJob {
 			// todo 对外暴露
 			log.info("~~~~~~~~");
 		}
+	}
+
+	private static int range(ShakeScore e2) {
+		int amplitude = (int) e2.getAmplitude();
+		// 区间幅度过大过小都不行、
+		// 分为[2,4),[4,6),[6,8),[8,10)四个区间、振幅所落区间相同、则比较score项
+		if (amplitude < MIN_AMPLITUDE || amplitude >= MAX_AMPLITUDE) {
+			return 0;
+		}
+		return amplitude / 2;
 	}
 }
 
