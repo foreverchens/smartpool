@@ -1,8 +1,6 @@
 package icu.smartpool.service;
 
 
-import com.alibaba.fastjson.JSON;
-
 import icu.smartpool.common.Config;
 import icu.smartpool.model.H1Kline;
 import icu.smartpool.model.Kline;
@@ -56,13 +54,11 @@ public class SmartPoolService {
 				   : maxP;
 		}
 		BigDecimal arrScale = minP.multiply(Config.SCALE);
-		int[] dataArr = new int[(maxP.subtract(minP).divide(arrScale, 1, RoundingMode.DOWN)
-									 .intValue())];
+		int[] dataArr = new int[(maxP.subtract(minP).divide(arrScale, 1, RoundingMode.DOWN).intValue())];
 		for (H1Kline kline : klineList) {
 			int[] itemDataArr = kline.getDataArr();
 			BigDecimal itemLowP = kline.getLowP();
-			int startIndex = itemLowP.subtract(minP).divide(arrScale, 1, RoundingMode.DOWN)
-									 .intValue();
+			int startIndex = itemLowP.subtract(minP).divide(arrScale, 1, RoundingMode.DOWN).intValue();
 			for (int i = 0; i < itemDataArr.length; i++) {
 				dataArr[startIndex + i] += itemDataArr[i];
 			}
@@ -88,11 +84,9 @@ public class SmartPoolService {
 		}
 		BigDecimal lowP = minP.add(arrScale.multiply(BigDecimal.valueOf(l)));
 		BigDecimal highP = minP.add(arrScale.multiply(BigDecimal.valueOf(r)));
-		BigDecimal amplitude = highP.subtract(lowP).multiply(BigDecimal.valueOf(100)).divide(lowP,
-																							 2,
+		BigDecimal amplitude = highP.subtract(lowP).multiply(BigDecimal.valueOf(100)).divide(lowP, 2,
 																							 RoundingMode.DOWN);
-		int score = BigDecimal.valueOf(countPt * 0.8).divide(amplitude, 1, RoundingMode.DOWN)
-							  .intValue();
+		int score = BigDecimal.valueOf(countPt * 0.8).divide(amplitude, 1, RoundingMode.DOWN).intValue();
 		return ShakeScore.builder().symbol(symbol).score(score).lowP(
 				lowP.setScale(4, RoundingMode.DOWN).toEngineeringString()).highP(
 				highP.setScale(4, RoundingMode.DOWN).toEngineeringString()).amplitude(
@@ -115,27 +109,28 @@ public class SmartPoolService {
 	private static void updateH1Kline(String symbol) {
 		Deque<H1Kline> deque = KLINE_CACHE.get(symbol);
 		long lastTime = System.currentTimeMillis() / HOUR * HOUR - HOUR;
-		while (deque.isEmpty() || deque.peek().getOpenT() < lastTime) {
-			long startTime = deque.isEmpty()
-							 ? System.currentTimeMillis() / HOUR * HOUR - DEQUE_SIZE * HOUR
-							 : deque.peek().getOpenT() + HOUR;
-
-			KlineParam param = KlineParam.builder()
-										 .symbol(symbol)
-										 .interval("1m")
-										 .startTime(startTime)
-										 .endTime(startTime + HOUR)
-										 .limit(60)
-										 .build();
-			List<Kline> klines = CzClient.listKline(param);
-
-			H1Kline newH1Kline = klineListToH1Kline(klines);
-			newH1Kline.setOpenT(startTime);
-			log.debug(JSON.toJSONString(newH1Kline));
-			if (deque.size() >= DEQUE_SIZE) {
-				deque.removeLast();
+		long startTime = deque.isEmpty()
+						 ? System.currentTimeMillis() / HOUR * HOUR - DEQUE_SIZE * HOUR
+						 : deque.peek().getOpenT() + HOUR;
+		for (int maxHour = 16; maxHour > 0; maxHour--) {
+			while ((lastTime - startTime) / HOUR >= maxHour) {
+				KlineParam param = KlineParam.builder()
+											 .symbol(symbol)
+											 .interval("1m")
+											 .startTime(startTime)
+											 .endTime(startTime + HOUR * maxHour)
+											 .limit(60 * maxHour)
+											 .build();
+				List<Kline> klines = CzClient.listKline(param);
+				for (int i = 0; i < klines.size(); i += 60) {
+					H1Kline newH1Kline = klineListToH1Kline(klines.subList(i, Math.min(i + 60, klines.size())));
+					newH1Kline.setOpenT(startTime += HOUR);
+					if (deque.size() >= DEQUE_SIZE) {
+						deque.removeLast();
+					}
+					deque.push(newH1Kline);
+				}
 			}
-			deque.push(newH1Kline);
 		}
 	}
 
@@ -151,8 +146,7 @@ public class SmartPoolService {
 					: highP;
 		}
 		BigDecimal arrScale = lowP.multiply(Config.SCALE);
-		int[] dataArr = new int[(highP.subtract(lowP).divide(arrScale, 1, RoundingMode.DOWN)
-									  .intValue())];
+		int[] dataArr = new int[(highP.subtract(lowP).divide(arrScale, 1, RoundingMode.DOWN).intValue())];
 		for (Kline kline : klines) {
 			BigDecimal openP = kline.getOpenP();
 			BigDecimal closeP = kline.getCloseP();
@@ -166,8 +160,7 @@ public class SmartPoolService {
 				// 低波动k线过滤
 				continue;
 			}
-			int startIndex =
-					openP.subtract(lowP).divide(arrScale, 1, RoundingMode.DOWN).intValue();
+			int startIndex = openP.subtract(lowP).divide(arrScale, 1, RoundingMode.DOWN).intValue();
 			int endIndex = closeP.subtract(lowP).divide(arrScale, 1, RoundingMode.DOWN).intValue();
 			for (int i = startIndex; i < endIndex; i++) {
 				dataArr[i]++;

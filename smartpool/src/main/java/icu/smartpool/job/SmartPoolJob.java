@@ -13,6 +13,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -40,6 +46,12 @@ public class SmartPoolJob {
 	private static final Map<Integer, List<List<ShakeScore>>> DATA_CACHE = new HashMap<>();
 
 
+	private static final ThreadPoolExecutor THREAD_POOL = new ThreadPoolExecutor(1, Config.MAX_POOL_SIZE, 1,
+																				 TimeUnit.MINUTES,
+																				 new ArrayBlockingQueue<>(1),
+																				 Executors.defaultThreadFactory(),
+																				 new ThreadPoolExecutor.CallerRunsPolicy());
+
 	public static void run() {
 		while (true) {
 			long l = System.currentTimeMillis();
@@ -49,8 +61,7 @@ public class SmartPoolJob {
 			} catch (Exception ex) {
 				ex.printStackTrace();
 			}
-			System.out.println("耗时：" + (System.currentTimeMillis() - l) / 1000);
-
+			log.info("耗时：" + (System.currentTimeMillis() - l) / 1000);
 			try {
 				TimeUnit.HOURS.sleep(1);
 			} catch (InterruptedException e) {
@@ -59,20 +70,29 @@ public class SmartPoolJob {
 		}
 	}
 
-	private static void loop() {
+	private static void loop() throws InterruptedException {
 		List<String> symbolList = CzClient.listSymbol();
 		for (Integer cycle : Config.CYCLE_LIST) {
-			List<ShakeScore> list = new ArrayList<>(symbolList.size());
-			log.info("cycle:{} 运行ing...", cycle);
+			Queue<ShakeScore> queue = new ArrayBlockingQueue<>(symbolList.size());
+			log.info("{}小时周期starting...", cycle);
+			CountDownLatch cdl = new CountDownLatch(symbolList.size());
 			for (String symbol : symbolList) {
-				log.info("{} starting.....", symbol);
-				list.add(SmartPoolService.analyze(symbol, cycle));
+				CompletableFuture.runAsync(() -> {
+					log.info("{} {}==>{}.....", symbol, symbolList.size() - cdl.getCount(), symbolList.size());
+					try {
+						queue.add(SmartPoolService.analyze(symbol, cycle));
+					} catch (Exception ex) {
+						ex.printStackTrace();
+					}
+					cdl.countDown();
+				}, THREAD_POOL);
 			}
+			cdl.await();
 			List<List<ShakeScore>> rlt = new ArrayList<>();
 			for (int i = 0; i < 5; i++) {
 				rlt.add(new ArrayList<>());
 			}
-			for (ShakeScore shakeScore : list) {
+			for (ShakeScore shakeScore : queue) {
 				int index = range(shakeScore);
 				rlt.get(index).add(shakeScore);
 			}
@@ -87,13 +107,11 @@ public class SmartPoolJob {
 			for (int i = rlt.size() - 1; i >= 0; i--) {
 				List<ShakeScore> itemList = rlt.get(i);
 				itemList.sort((e1, e2) -> e2.getScore() - e1.getScore());
-				log.info("～～周期{}-振幅-[{},{})-前{}排名～～", cycle, i * 2, i * 2 + 2, LIMIT);
+				log.info("～～周期{}H-振幅-[{},{})-前{}排名～～", cycle, i * 2, i * 2 + 2, LIMIT);
 				for (int j = 0; j < itemList.size() && j < LIMIT; j++) {
-					log.info(JSON.toJSONString(itemList.get(j)));
+					System.out.println(JSON.toJSONString(itemList.get(j)));
 				}
 			}
-			// todo 对外暴露
-			log.info("~~~~~~~~");
 		}
 	}
 

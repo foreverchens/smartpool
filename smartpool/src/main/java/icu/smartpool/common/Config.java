@@ -19,6 +19,8 @@ public interface Config {
 	 */
 	int MAX_DAY = 1;
 
+	int MAX_POOL_SIZE = 1;
+
 	/**
 	 * 分析周期列表
 	 */

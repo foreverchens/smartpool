@@ -40,8 +40,9 @@ public class CzClient {
 
 	private static final OkHttpClient OK_HTTP_CLIENT = new OkHttpClient.Builder().build();
 
-	private static final Set<String> SET = Sets.newHashSet("TUSDUSDT", "USDCUSDT", "USDPUSDT", "EURUSDT", "AEURUSDT",
-														   "PAXGUSDT");
+	private static final Set<String> SET = Sets.newHashSet(
+			"TUSDUSDT", "USDCUSDT", "USDPUSDT",
+			"EURUSDT", "AEURUSDT", "MANTAUSDT", "PAXGUSDT");
 
 	public static List<String> listSymbol() {
 		if (CollectionUtil.isNotEmpty(symbols) && System.currentTimeMillis() < expireTime) {
@@ -67,7 +68,6 @@ public class CzClient {
 		}
 		expireTime = System.currentTimeMillis() + (1000 * 60 * 60 * 24 * 10);
 		symbols.removeAll(SET);
-		// symbols = Arrays.asList("BTCUSDT");
 		return symbols;
 	}
 
