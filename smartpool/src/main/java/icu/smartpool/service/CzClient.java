@@ -42,7 +42,7 @@ public class CzClient {
 
 	private static final Set<String> SET = Sets.newHashSet(
 			"TUSDUSDT", "USDCUSDT", "USDPUSDT",
-			"EURUSDT", "AEURUSDT", "MANTAUSDT", "PAXGUSDT");
+			"EURUSDT", "AEURUSDT", "MANTAUSDT", "PAXGUSDT","FDUSDUSDT");
 
 	public static List<String> listSymbol() {
 		if (CollectionUtil.isNotEmpty(symbols) && System.currentTimeMillis() < expireTime) {

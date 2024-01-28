@@ -108,7 +108,7 @@ public class SmartPoolService {
 
 	private static void updateH1Kline(String symbol) {
 		Deque<H1Kline> deque = KLINE_CACHE.get(symbol);
-		long lastTime = System.currentTimeMillis() / HOUR * HOUR - HOUR;
+		long lastTime = System.currentTimeMillis() / HOUR * HOUR;
 		long startTime = deque.isEmpty()
 						 ? System.currentTimeMillis() / HOUR * HOUR - DEQUE_SIZE * HOUR
 						 : deque.peek().getOpenT() + HOUR;
