@@ -5,7 +5,7 @@
 </center>
 
 
-
+**Nodejs版本实现  ==> [smartpool](https://github.com/foreverchens/smartpool-nodejs)** 
 
 
 ### 0、一句话介绍
